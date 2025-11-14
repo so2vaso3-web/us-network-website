@@ -195,13 +195,54 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     }
   }, [step, paymentMethod, selectedCrypto]);
 
+  // Format crypto address with URI scheme for QR code compatibility
+  const formatCryptoAddressForQR = (address: string, crypto: string) => {
+    if (!address) return address;
+    
+    // Normalize crypto name to lowercase (e.g., bitcoinCash -> bitcoincash)
+    const cryptoLower = crypto.toLowerCase();
+    
+    // Format with URI scheme based on crypto type for better app compatibility (Binance, Trust Wallet, MetaMask, etc.)
+    // These URI schemes are standard and recognized by most crypto wallets
+    if (cryptoLower === 'bitcoin') {
+      return `bitcoin:${address}`;
+    } else if (cryptoLower === 'ethereum' || cryptoLower === 'usdt' || cryptoLower === 'usdc' || 
+               cryptoLower === 'shib' || cryptoLower === 'matic' || cryptoLower === 'avax') {
+      // Ethereum and ERC-20 tokens use ethereum: scheme
+      return `ethereum:${address}`;
+    } else if (cryptoLower === 'litecoin') {
+      return `litecoin:${address}`;
+    } else if (cryptoLower === 'dogecoin') {
+      return `dogecoin:${address}`;
+    } else if (cryptoLower === 'bitcoincash' || crypto === 'bitcoinCash') {
+      return `bitcoincash:${address}`;
+    } else if (cryptoLower === 'xrp') {
+      return `xrp:${address}`;
+    } else if (cryptoLower === 'bnb') {
+      return `binance:${address}`;
+    } else if (cryptoLower === 'trx') {
+      return `tron:${address}`;
+    } else if (cryptoLower === 'solana') {
+      return `solana:${address}`;
+    } else if (cryptoLower === 'dot') {
+      return `polkadot:${address}`;
+    } else if (cryptoLower === 'ada') {
+      return `cardano:${address}`;
+    }
+    
+    // Default: return address as-is (fallback for unsupported cryptos)
+    return address;
+  };
+
   useEffect(() => {
     if (step === 'payment-method' && paymentMethod === 'crypto') {
       // Only create QR code if address exists in settings
       if (hasCryptoAddress) {
         const address = getCryptoAddress();
         if (address) {
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(address)}&bgcolor=ffffff&color=000000&margin=2`;
+          // Format address with URI scheme for better QR code compatibility
+          const formattedAddress = formatCryptoAddressForQR(address, selectedCrypto);
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formattedAddress)}&bgcolor=ffffff&color=000000&margin=2`;
           setQrCodeUrl(qrUrl);
         } else {
           setQrCodeUrl('');
