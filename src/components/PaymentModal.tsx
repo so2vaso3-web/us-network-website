@@ -18,7 +18,9 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
   });
   const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'crypto'>('paypal');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedCrypto, setSelectedCrypto] = useState<'bitcoin' | 'ethereum' | 'usdt' | 'usdc' | 'litecoin' | 'dogecoin' | 'solana' | 'bitcoinCash' | 'xrp' | 'bnb' | 'trx' | 'matic' | 'avax' | 'dot' | 'ada' | 'shib'>('bitcoin');
+  // Chỉ giữ 4 crypto phổ biến nhất: BTC, ETH, USDT, BNB
+  const [selectedCrypto, setSelectedCrypto] = useState<'bitcoin' | 'ethereum' | 'usdt' | 'bnb'>('bitcoin');
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [paypalLoaded, setPaypalLoaded] = useState(false);
   const [paypalButtonRendered, setPaypalButtonRendered] = useState(false);
@@ -36,24 +38,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       if (settings) {
         try {
           const parsed = JSON.parse(settings);
-          // Map selected crypto to correct address key
+          // Map selected crypto to correct address key (chỉ 4 crypto: BTC, ETH, USDT, BNB)
           const addressMap: Record<string, string> = {
             bitcoin: 'bitcoinAddress',
             ethereum: 'ethereumAddress',
             usdt: 'usdtAddress',
-            usdc: 'usdcAddress',
-            litecoin: 'litecoinAddress',
-            dogecoin: 'dogecoinAddress',
-            solana: 'solanaAddress',
-            bitcoinCash: 'bitcoinCashAddress',
-            xrp: 'xrpAddress',
             bnb: 'bnbAddress',
-            trx: 'trxAddress',
-            matic: 'maticAddress',
-            avax: 'avaxAddress',
-            dot: 'dotAddress',
-            ada: 'adaAddress',
-            shib: 'shibAddress',
           };
           
           const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
@@ -115,24 +105,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       if (settings) {
         try {
           const parsed = JSON.parse(settings);
-          // Map selected crypto to correct address key
+          // Map selected crypto to correct address key (chỉ 4 crypto: BTC, ETH, USDT, BNB)
           const addressMap: Record<string, string> = {
             bitcoin: 'bitcoinAddress',
             ethereum: 'ethereumAddress',
             usdt: 'usdtAddress',
-            usdc: 'usdcAddress',
-            litecoin: 'litecoinAddress',
-            dogecoin: 'dogecoinAddress',
-            solana: 'solanaAddress',
-            bitcoinCash: 'bitcoinCashAddress',
-            xrp: 'xrpAddress',
             bnb: 'bnbAddress',
-            trx: 'trxAddress',
-            matic: 'maticAddress',
-            avax: 'avaxAddress',
-            dot: 'dotAddress',
-            ada: 'adaAddress',
-            shib: 'shibAddress',
           };
           
           const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
@@ -153,30 +131,19 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     return getCryptoAddressFromSettings();
   };
 
-  // Auto-select first available crypto when switching to crypto payment
+  // Auto-select first available crypto and network when switching to crypto payment
   useEffect(() => {
     if (step === 'payment-method' && paymentMethod === 'crypto' && typeof window !== 'undefined') {
       const settings = localStorage.getItem('adminSettings');
       if (settings) {
         try {
           const parsed = JSON.parse(settings);
+          // Chỉ giữ 4 crypto phổ biến nhất: BTC, ETH, USDT, BNB
           const cryptos = [
             { key: 'bitcoin', address: parsed.bitcoinAddress },
-            { key: 'ethereum', address: parsed.ethereumAddress },
-            { key: 'usdt', address: parsed.usdtAddress },
-            { key: 'usdc', address: parsed.usdcAddress },
-            { key: 'litecoin', address: parsed.litecoinAddress },
-            { key: 'dogecoin', address: parsed.dogecoinAddress },
-            { key: 'solana', address: parsed.solanaAddress },
-            { key: 'bitcoinCash', address: parsed.bitcoinCashAddress },
-            { key: 'xrp', address: parsed.xrpAddress },
-            { key: 'bnb', address: parsed.bnbAddress },
-            { key: 'trx', address: parsed.trxAddress },
-            { key: 'matic', address: parsed.maticAddress },
-            { key: 'avax', address: parsed.avaxAddress },
-            { key: 'dot', address: parsed.dotAddress },
-            { key: 'ada', address: parsed.adaAddress },
-            { key: 'shib', address: parsed.shibAddress },
+            { key: 'ethereum', address: parsed.ethereumAddress, network: parsed.ethereumNetwork || 'ethereum' },
+            { key: 'usdt', address: parsed.usdtAddress, network: parsed.usdtNetwork || 'ethereum' },
+            { key: 'bnb', address: parsed.bnbAddress, network: parsed.bnbNetwork || 'bsc' },
           ];
           
           const availableCryptos = cryptos.filter(c => c.address && c.address.trim() !== '');
@@ -185,7 +152,13 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
           if (availableCryptos.length > 0) {
             const currentCrypto = cryptos.find(c => c.key === selectedCrypto);
             if (!currentCrypto || !currentCrypto.address || currentCrypto.address.trim() === '') {
-              setSelectedCrypto(availableCryptos[0].key as any);
+              const firstAvailable = availableCryptos[0];
+              setSelectedCrypto(firstAvailable.key as any);
+              if (firstAvailable.network) {
+                setSelectedNetwork(firstAvailable.network);
+              }
+            } else if (currentCrypto.network) {
+              setSelectedNetwork(currentCrypto.network);
             }
           }
         } catch (e) {
@@ -194,67 +167,116 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       }
     }
   }, [step, paymentMethod, selectedCrypto]);
+  
+  // Update network when crypto changes
+  useEffect(() => {
+    if (step === 'payment-method' && paymentMethod === 'crypto' && typeof window !== 'undefined') {
+      const settings = localStorage.getItem('adminSettings');
+      if (settings) {
+        try {
+          const parsed = JSON.parse(settings);
+          if (selectedCrypto === 'ethereum') {
+            setSelectedNetwork(parsed.ethereumNetwork || 'ethereum');
+          } else if (selectedCrypto === 'usdt') {
+            setSelectedNetwork(parsed.usdtNetwork || 'ethereum');
+          } else if (selectedCrypto === 'bnb') {
+            setSelectedNetwork(parsed.bnbNetwork || 'bsc');
+          } else if (selectedCrypto === 'bitcoin') {
+            setSelectedNetwork('bitcoin'); // Bitcoin chỉ có 1 network
+          }
+        } catch (e) {
+          console.error('Error loading network:', e);
+        }
+      }
+    }
+  }, [selectedCrypto, step, paymentMethod]);
 
-  // Format crypto address with URI scheme for QR code compatibility
-  const formatCryptoAddressForQR = (address: string, crypto: string) => {
+  // Format crypto address for QR code - Hỗ trợ cả Binance Wallet và Trust Wallet
+  // Binance Wallet: Ưu tiên format đơn giản (chỉ address hoặc ethereum:address không có @chainId)
+  // Trust Wallet: Hỗ trợ format EIP-681 với chainId
+  const formatCryptoAddressForQR = (address: string, crypto: string, network?: string) => {
     if (!address) return address;
     
-    // Normalize crypto name to lowercase (e.g., bitcoinCash -> bitcoincash)
+    // Normalize crypto name to lowercase
     const cryptoLower = crypto.toLowerCase();
+    const networkLower = network?.toLowerCase() || '';
     
-    // Format with URI scheme based on crypto type for better app compatibility (Binance, Trust Wallet, MetaMask, etc.)
-    // These URI schemes are standard and recognized by most crypto wallets
+    // Binance Wallet ưu tiên format đơn giản - KHÔNG dùng @chainId
+    // Format đơn giản: chỉ address hoặc scheme:address (không có @chainId)
     if (cryptoLower === 'bitcoin') {
-      return `bitcoin:${address}`;
-    } else if (cryptoLower === 'ethereum' || cryptoLower === 'usdt' || cryptoLower === 'usdc' || 
-               cryptoLower === 'shib' || cryptoLower === 'matic' || cryptoLower === 'avax') {
-      // Ethereum and ERC-20 tokens use ethereum: scheme
+      // Bitcoin: chỉ dùng address đơn giản cho Binance Wallet
+      return address;
+    } else if (cryptoLower === 'ethereum') {
+      // Ethereum: format đơn giản ethereum:address (không có @chainId) cho Binance Wallet
       return `ethereum:${address}`;
-    } else if (cryptoLower === 'litecoin') {
-      return `litecoin:${address}`;
-    } else if (cryptoLower === 'dogecoin') {
-      return `dogecoin:${address}`;
-    } else if (cryptoLower === 'bitcoincash' || crypto === 'bitcoinCash') {
-      return `bitcoincash:${address}`;
-    } else if (cryptoLower === 'xrp') {
-      return `xrp:${address}`;
+    } else if (cryptoLower === 'usdt') {
+      // USDT trên các network
+      if (networkLower === 'tron') {
+        // Tron: tron:address
+        return `tron:${address}`;
+      } else if (networkLower === 'bsc') {
+        // USDT trên BSC: ethereum:address (Binance Wallet nhận diện BSC qua scheme)
+        return `ethereum:${address}`;
+      } else if (networkLower === 'polygon') {
+        // USDT trên Polygon: ethereum:address
+        return `ethereum:${address}`;
+      } else if (networkLower === 'avalanche') {
+        // USDT trên Avalanche: ethereum:address
+        return `ethereum:${address}`;
+      }
+      // Default: Ethereum (ERC-20)
+      return `ethereum:${address}`;
     } else if (cryptoLower === 'bnb') {
-      return `binance:${address}`;
-    } else if (cryptoLower === 'trx') {
-      return `tron:${address}`;
-    } else if (cryptoLower === 'solana') {
-      return `solana:${address}`;
-    } else if (cryptoLower === 'dot') {
-      return `polkadot:${address}`;
-    } else if (cryptoLower === 'ada') {
-      return `cardano:${address}`;
+      if (networkLower === 'beacon') {
+        // BNB Beacon Chain: binance:address
+        return `binance:${address}`;
+      }
+      // Default: BSC (BEP-20) - dùng ethereum:address cho Binance Wallet
+      return `ethereum:${address}`;
     }
     
-    // Default: return address as-is (fallback for unsupported cryptos)
+    // Default: return address as-is (fallback)
     return address;
   };
 
   useEffect(() => {
-    if (step === 'payment-method' && paymentMethod === 'crypto') {
-      // Only create QR code if address exists in settings
-      if (hasCryptoAddress) {
-        const address = getCryptoAddress();
-        if (address) {
-          // Format address with URI scheme for better QR code compatibility
-          const formattedAddress = formatCryptoAddressForQR(address, selectedCrypto);
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formattedAddress)}&bgcolor=ffffff&color=000000&margin=2`;
-          setQrCodeUrl(qrUrl);
+    try {
+      if (step === 'payment-method' && paymentMethod === 'crypto') {
+        // Only create QR code if address exists in settings
+        if (hasCryptoAddress) {
+          const address = getCryptoAddress();
+          if (address) {
+            try {
+              // Format address with URI scheme và network cho Binance Wallet compatibility
+              // QUAN TRỌNG: Phải truyền selectedNetwork để format đúng chainId
+              // Đảm bảo selectedNetwork không undefined
+              const network = selectedNetwork || '';
+              const formattedAddress = formatCryptoAddressForQR(address, selectedCrypto, network);
+              if (formattedAddress) {
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formattedAddress)}&bgcolor=ffffff&color=000000&margin=2`;
+                setQrCodeUrl(qrUrl);
+              } else {
+                setQrCodeUrl('');
+              }
+            } catch (error) {
+              console.error('Error formatting QR code address:', error);
+              setQrCodeUrl('');
+            }
+          } else {
+            setQrCodeUrl('');
+          }
         } else {
           setQrCodeUrl('');
         }
       } else {
         setQrCodeUrl('');
       }
-    } else {
+    } catch (error) {
+      console.error('Error in QR code generation effect:', error);
       setQrCodeUrl('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, paymentMethod, selectedCrypto, hasCryptoAddress]);
+  }, [step, paymentMethod, selectedCrypto, selectedNetwork, hasCryptoAddress]);
 
   // Load PayPal SDK when PayPal is selected
   useEffect(() => {
@@ -924,7 +946,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     <i className="fab fa-bitcoin text-2xl text-white"></i>
                   </div>
                   <span className="font-medium text-white">Cryptocurrency</span>
-                  <span className="text-xs text-gray-400">BTC, ETH, USDT, USDC, LTC, DOGE, SOL, BCH</span>
+                  <span className="text-xs text-gray-400">BTC, ETH, USDT, BNB</span>
                   {paymentMethod === 'crypto' && (
                     <div className="absolute top-2 right-2">
                       <i className="fas fa-check-circle text-green-400"></i>
@@ -1137,23 +1159,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                         }
                       }
 
+                      // Chỉ giữ 4 crypto phổ biến nhất: BTC, ETH, USDT, BNB
                       const cryptos = [
                         { key: 'bitcoin', label: 'BTC', icon: 'bitcoin', address: parsed.bitcoinAddress },
                         { key: 'ethereum', label: 'ETH', icon: 'ethereum', address: parsed.ethereumAddress },
                         { key: 'usdt', label: 'USDT', icon: 'bitcoin', address: parsed.usdtAddress },
-                        { key: 'usdc', label: 'USDC', icon: 'ethereum', address: parsed.usdcAddress },
-                        { key: 'litecoin', label: 'LTC', icon: 'bitcoin', address: parsed.litecoinAddress },
-                        { key: 'dogecoin', label: 'DOGE', icon: 'bitcoin', address: parsed.dogecoinAddress },
-                        { key: 'solana', label: 'SOL', icon: 'bitcoin', address: parsed.solanaAddress },
-                        { key: 'bitcoinCash', label: 'BCH', icon: 'bitcoin', address: parsed.bitcoinCashAddress },
-                        { key: 'xrp', label: 'XRP', icon: 'bitcoin', address: parsed.xrpAddress },
                         { key: 'bnb', label: 'BNB', icon: 'bitcoin', address: parsed.bnbAddress },
-                        { key: 'trx', label: 'TRX', icon: 'bitcoin', address: parsed.trxAddress },
-                        { key: 'matic', label: 'MATIC', icon: 'bitcoin', address: parsed.maticAddress },
-                        { key: 'avax', label: 'AVAX', icon: 'bitcoin', address: parsed.avaxAddress },
-                        { key: 'dot', label: 'DOT', icon: 'bitcoin', address: parsed.dotAddress },
-                        { key: 'ada', label: 'ADA', icon: 'bitcoin', address: parsed.adaAddress },
-                        { key: 'shib', label: 'SHIB', icon: 'bitcoin', address: parsed.shibAddress },
                       ];
 
                       return cryptos.map((crypto) => {
@@ -1207,11 +1218,9 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                         return null;
                       }
                     }
+                    // Chỉ đếm 4 crypto: BTC, ETH, USDT, BNB
                     const availableCount = [
-                      parsed.bitcoinAddress, parsed.ethereumAddress, parsed.usdtAddress, parsed.usdcAddress,
-                      parsed.litecoinAddress, parsed.dogecoinAddress, parsed.solanaAddress, parsed.bitcoinCashAddress,
-                      parsed.xrpAddress, parsed.bnbAddress, parsed.trxAddress, parsed.maticAddress,
-                      parsed.avaxAddress, parsed.dotAddress, parsed.adaAddress, parsed.shibAddress
+                      parsed.bitcoinAddress, parsed.ethereumAddress, parsed.usdtAddress, parsed.bnbAddress
                     ].filter(a => a && a.trim() !== '').length;
 
                     if (availableCount === 0) {
@@ -1231,8 +1240,74 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     );
                     })()}
                   </div>
+                  
+                  {/* Network Selector - Hiển thị khi crypto cần chọn network */}
+                  {selectedCrypto !== 'bitcoin' && hasCryptoAddress && (() => {
+                    const settings = typeof window !== 'undefined' ? localStorage.getItem('adminSettings') : null;
+                    let parsed: any = {};
+                    if (settings) {
+                      try {
+                        parsed = JSON.parse(settings);
+                      } catch (e) {
+                        return null;
+                      }
+                    }
+                    
+                    let networkOptions: Array<{ value: string; label: string }> = [];
+                    let defaultNetwork = '';
+                    
+                    if (selectedCrypto === 'ethereum') {
+                      defaultNetwork = parsed.ethereumNetwork || 'ethereum';
+                      networkOptions = [
+                        { value: 'ethereum', label: 'ETH - Ethereum (ERC20)' },
+                        { value: 'bsc', label: 'BSC - Binance Smart Chain (BEP20)' },
+                      ];
+                    } else if (selectedCrypto === 'usdt') {
+                      defaultNetwork = parsed.usdtNetwork || 'tron';
+                      networkOptions = [
+                        { value: 'tron', label: 'TRX - Tron (TRC20)' },
+                      ];
+                    } else if (selectedCrypto === 'bnb') {
+                      defaultNetwork = parsed.bnbNetwork || 'bsc';
+                      networkOptions = [
+                        { value: 'bsc', label: 'BSC - BNB Smart Chain (BEP20)' },
+                      ];
+                    }
+                    
+                    if (networkOptions.length === 0) return null;
+                    
+                    const currentNetwork = selectedNetwork || defaultNetwork;
+                    
+                    return (
+                      <div className="mt-4">
+                        <label className="block mb-2 font-medium text-gray-300">Network</label>
+                        <div className="relative">
+                          <select
+                            value={currentNetwork}
+                            onChange={(e) => setSelectedNetwork(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-gray-400 transition-colors appearance-none cursor-pointer pr-10 network-select"
+                          >
+                            {networkOptions.map((option) => (
+                              <option key={option.value} value={option.value} className="bg-gray-800 text-white">
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <i className="fas fa-chevron-down text-gray-400"></i>
+                          </div>
+                        </div>
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-3">
+                          <p className="text-xs text-yellow-300 flex items-start gap-2">
+                            <i className="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+                            <span><strong>⚠️ CẢNH BÁO:</strong> Đảm bảo bạn chọn đúng mạng lưới khi gửi. Gửi sai mạng có thể mất tiền vĩnh viễn!</span>
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                {/* Payment Instructions for Crypto */}
+                {/* Payment Instructions for Crypto - Giống Binance */}
                 <div className="mt-4">
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                     <div className="flex items-start gap-3">
@@ -1240,11 +1315,28 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       <div className="flex-1">
                         <h4 className="font-semibold text-yellow-400 mb-2">Payment Instructions</h4>
                         <p className="text-gray-300 text-sm mb-2">
-                          Please send <span className="font-bold text-white">${pkg.price} USD</span> worth of <span className="font-bold text-white">{selectedCrypto.toUpperCase()}</span> to the address shown below.
+                          Please send <span className="font-bold text-white">${pkg.price} USD</span> worth of <span className="font-bold text-white">{selectedCrypto.toUpperCase()}</span>
+                          {selectedNetwork && selectedCrypto !== 'bitcoin' && (
+                            <span className="font-bold text-white"> ({selectedNetwork.toUpperCase()})</span>
+                          )} to the address shown below.
                         </p>
-                        <p className="text-gray-400 text-xs">
+                        <p className="text-gray-400 text-xs mb-3">
                           We will contact you at <span className="text-white font-semibold">{customerInfo.email || 'your email'}</span> once payment is confirmed.
                         </p>
+                        <div className="space-y-2 text-xs text-gray-300">
+                          <div className="flex items-start gap-2">
+                            <span className="text-yellow-400">•</span>
+                            <span>Minimum deposit: <span className="text-white font-semibold">&gt;0.000001 {selectedCrypto.toUpperCase()}</span></span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-yellow-400">•</span>
+                            <span>Credited (Trading enabled): <span className="text-white font-semibold">1 Confirmation</span></span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-yellow-400">•</span>
+                            <span>Unlocked (Withdrawal enabled): <span className="text-white font-semibold">1 Confirmation</span></span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1285,10 +1377,10 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   return (
                     <div className="p-5 bg-gray-800/50 rounded-lg border border-gray-700">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        {/* QR Code */}
+                        {/* QR Code - Giống Binance: lớn hơn, có border rõ ràng */}
                         <div className="flex flex-col items-center">
                           <label className="block mb-3 font-medium text-gray-300 text-sm">Scan QR Code</label>
-                          <div className="w-40 h-40 sm:w-48 sm:h-48 bg-white rounded-lg p-2 sm:p-3 flex items-center justify-center mx-auto">
+                          <div className="w-48 h-48 sm:w-56 sm:h-56 bg-white rounded-xl p-3 sm:p-4 flex items-center justify-center mx-auto shadow-lg border-2 border-gray-600">
                             {qrCodeUrl ? (
                               <>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1309,39 +1401,48 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                               </div>
                             )}
                           </div>
+                          <p className="text-xs text-gray-400 mt-2 text-center">
+                            Quét bằng Binance Wallet, Trust Wallet hoặc MetaMask
+                          </p>
                         </div>
 
-                        {/* Address */}
+                        {/* Address - Hiển thị giống Binance: địa chỉ đầy đủ luôn */}
                         <div className="flex flex-col justify-center">
-                          <label className="block mb-3 font-medium text-gray-300 text-sm">Send Payment To</label>
+                          <label className="block mb-3 font-medium text-gray-300 text-sm">Deposit Address</label>
                           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-3">
-                            <div className="font-mono text-sm text-gray-300 break-all mb-2" id="crypto-address-display">
-                              {currentAddress.length > 30 ? `${currentAddress.slice(0, 15)}...${currentAddress.slice(-15)}` : currentAddress}
+                            <div className="font-mono text-sm text-white break-all mb-3" id="crypto-address-display">
+                              {currentAddress}
                             </div>
-                            <button
-                              onClick={() => {
-                                const display = document.getElementById('crypto-address-display');
-                                if (display && currentAddress) {
-                                  display.textContent = currentAddress;
-                                  setTimeout(() => {
-                                    if (display) {
-                                      display.textContent = currentAddress.length > 30 ? `${currentAddress.slice(0, 15)}...${currentAddress.slice(-15)}` : currentAddress;
-                                    }
-                                  }, 3000);
-                                }
-                              }}
-                              className="text-xs text-gray-400 hover:text-gray-300 underline"
-                            >
-                              Show Full Address
-                            </button>
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs text-gray-400">
+                                Network: <span className="text-gray-300 font-semibold">
+                                  {selectedCrypto === 'bitcoin' ? 'BTC - Bitcoin' :
+                                   selectedCrypto === 'ethereum' ? (selectedNetwork === 'ethereum' ? 'ETH - Ethereum (ERC20)' : 'BSC - Binance Smart Chain (BEP20)') :
+                                   selectedCrypto === 'usdt' ? 'TRX - Tron (TRC20)' :
+                                   selectedCrypto === 'bnb' ? 'BSC - BNB Smart Chain (BEP20)' : ''}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => copyAddress(currentAddress)}
+                                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-1.5 text-xs"
+                              >
+                                <i className="fas fa-copy"></i>
+                                <span>Copy</span>
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => copyAddress(currentAddress)}
-                            className="w-full px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-                          >
-                            <i className="fas fa-copy"></i>
-                            <span>Copy Address</span>
-                          </button>
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
+                            <p className="text-xs text-red-300 flex items-start gap-2">
+                              <i className="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+                              <span><strong>⚠️ QUAN TRỌNG:</strong> Đảm bảo bạn chọn đúng mạng lưới (Network) khi gửi. Gửi sai mạng có thể mất tiền vĩnh viễn!</span>
+                            </p>
+                          </div>
+                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                            <p className="text-xs text-blue-300">
+                              <i className="fas fa-info-circle mr-1"></i>
+                              <strong>Lưu ý:</strong> Không gửi NFT hoặc smart contract đến địa chỉ này. Chỉ gửi {selectedCrypto.toUpperCase()} thôi.
+                            </p>
+                          </div>
                         </div>
                       </div>
 
@@ -1383,19 +1484,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                           bitcoin: 'bitcoinAddress',
                           ethereum: 'ethereumAddress',
                           usdt: 'usdtAddress',
-                          usdc: 'usdcAddress',
-                          litecoin: 'litecoinAddress',
-                          dogecoin: 'dogecoinAddress',
-                          solana: 'solanaAddress',
-                          bitcoinCash: 'bitcoinCashAddress',
-                          xrp: 'xrpAddress',
                           bnb: 'bnbAddress',
-                          trx: 'trxAddress',
-                          matic: 'maticAddress',
-                          avax: 'avaxAddress',
-                          dot: 'dotAddress',
-                          ada: 'adaAddress',
-                          shib: 'shibAddress',
                         };
                         const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
                         const address = parsed[addressKey];

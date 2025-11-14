@@ -8,15 +8,57 @@ export default function IntroBanner() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Ngay lập tức check pathname - không chờ
+      const currentPath = window.location.pathname;
+      
+      // KHÔNG hiển thị trên admin page - luôn luôn dismiss
+      if (currentPath.startsWith('/admin')) {
+        setIsDismissed(true);
+        setIsVisible(false);
+        return;
+      }
+      
       // Check if user chose to never show again
       const neverShow = localStorage.getItem('introBannerNeverShow');
       if (neverShow === 'true') {
         setIsDismissed(true);
+        setIsVisible(false);
         return;
       }
       
-      // Always show banner on page load (after a short delay)
-      setTimeout(() => setIsVisible(true), 500);
+      // TẠM THỜI TẮT INTROBANNER ĐỂ TEST - COMMENT LẠI SAU
+      // Uncomment đoạn code dưới để bật lại IntroBanner
+      /*
+      // Listen for route changes
+      const handleRouteChange = () => {
+        const newPath = window.location.pathname;
+        if (newPath.startsWith('/admin')) {
+          setIsDismissed(true);
+          setIsVisible(false);
+        }
+      };
+      
+      window.addEventListener('popstate', handleRouteChange);
+      
+      // Show banner on main pages only (after delay)
+      if (!currentPath.startsWith('/admin')) {
+        const timer = setTimeout(() => {
+          // Double-check pathname before showing
+          if (!window.location.pathname.startsWith('/admin')) {
+            setIsVisible(true);
+          }
+        }, 500);
+        
+        return () => {
+          clearTimeout(timer);
+          window.removeEventListener('popstate', handleRouteChange);
+        };
+      }
+      */
+      
+      // TẠM THỜI: Luôn dismiss để test
+      setIsDismissed(true);
+      setIsVisible(false);
     }
   }, []);
 

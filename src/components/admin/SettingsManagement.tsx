@@ -244,7 +244,7 @@ export default function SettingsManagement() {
                     <select
                       value={settings.paypalMode || 'sandbox'}
                       onChange={(e) => setSettings({ ...settings, paypalMode: e.target.value as 'sandbox' | 'live' })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                     >
                       <option value="sandbox">Sandbox (Test)</option>
                       <option value="live">Live (Production)</option>
@@ -258,7 +258,7 @@ export default function SettingsManagement() {
                     <select
                       value={settings.paypalCurrency || 'USD'}
                       onChange={(e) => setSettings({ ...settings, paypalCurrency: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                     >
                       <option value="USD">USD - US Dollar</option>
                       <option value="EUR">EUR - Euro</option>
@@ -352,7 +352,7 @@ export default function SettingsManagement() {
                   <select
                     value={settings.cryptoGateway || 'manual'}
                     onChange={(e) => setSettings({ ...settings, cryptoGateway: e.target.value })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                   >
                     <option value="manual">Thủ Công (Manual)</option>
                     <option value="nowpayments">NOWPayments</option>
@@ -362,167 +362,181 @@ export default function SettingsManagement() {
                     Khuyến nghị: NOWPayments hoặc Thủ Công. BitPay bị chặn tại Việt Nam.
                   </small>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Bitcoin (BTC)</label>
-                    <input
-                      type="text"
-                      value={settings.bitcoinAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, bitcoinAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="bc1q..."
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Bitcoin (BTC) */}
+                  <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <i className="fab fa-bitcoin text-orange-400"></i>
+                      Bitcoin (BTC)
+                    </h4>
+                    <div>
+                      <label className="block mb-2 font-semibold text-sm">Địa Chỉ Bitcoin</label>
+                      <input
+                        type="text"
+                        value={settings.bitcoinAddress || ''}
+                        onChange={(e) => setSettings({ ...settings, bitcoinAddress: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                        placeholder="bc1q..."
+                      />
+                      <small className="text-gray-400 text-xs block mt-1">Bitcoin Mainnet</small>
+                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <h5 className="font-semibold text-sm text-blue-300 mb-2 flex items-center gap-2">
+                          <i className="fas fa-info-circle"></i>
+                          Hướng dẫn lấy địa chỉ BTC từ Binance:
+                        </h5>
+                        <ol className="text-xs text-gray-300 space-y-1.5 list-decimal list-inside ml-2">
+                          <li>Mở app Binance → Chọn <span className="text-blue-400 font-semibold">Wallet</span></li>
+                          <li>Chọn <span className="text-blue-400 font-semibold">Fiat and Spot</span> hoặc <span className="text-blue-400 font-semibold">Funding</span></li>
+                          <li>Tìm và chọn <span className="text-blue-400 font-semibold">BTC (Bitcoin)</span></li>
+                          <li>Nhấn <span className="text-blue-400 font-semibold">Deposit</span> (Nạp tiền)</li>
+                          <li>Chọn network: <span className="text-blue-400 font-semibold">BTC - Bitcoin</span></li>
+                          <li>Sao chép địa chỉ ví (bắt đầu bằng <span className="text-orange-400 font-mono">bc1</span> hoặc <span className="text-orange-400 font-mono">1</span> hoặc <span className="text-orange-400 font-mono">3</span>)</li>
+                        </ol>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Ethereum (ETH)</label>
-                    <input
-                      type="text"
-                      value={settings.ethereumAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, ethereumAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x..."
-                    />
+
+                  {/* Ethereum (ETH) */}
+                  <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <i className="fab fa-ethereum text-blue-400"></i>
+                      Ethereum (ETH)
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Địa Chỉ Ethereum</label>
+                        <input
+                          type="text"
+                          value={settings.ethereumAddress || ''}
+                          onChange={(e) => setSettings({ ...settings, ethereumAddress: e.target.value })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                          placeholder="0x..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
+                        <select
+                          value={settings.ethereumNetwork || 'ethereum'}
+                          onChange={(e) => setSettings({ ...settings, ethereumNetwork: e.target.value as any })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
+                        >
+                          <option value="ethereum">ETH - Ethereum (ERC20)</option>
+                          <option value="bsc">BSC - Binance Smart Chain (BEP20)</option>
+                        </select>
+                      </div>
+                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <h5 className="font-semibold text-sm text-blue-300 mb-2 flex items-center gap-2">
+                          <i className="fas fa-info-circle"></i>
+                          Hướng dẫn lấy địa chỉ ETH từ Binance:
+                        </h5>
+                        <ol className="text-xs text-gray-300 space-y-1.5 list-decimal list-inside ml-2">
+                          <li>Mở app Binance → Chọn <span className="text-blue-400 font-semibold">Wallet</span></li>
+                          <li>Chọn <span className="text-blue-400 font-semibold">Fiat and Spot</span> hoặc <span className="text-blue-400 font-semibold">Funding</span></li>
+                          <li>Tìm và chọn <span className="text-blue-400 font-semibold">ETH (Ethereum)</span></li>
+                          <li>Nhấn <span className="text-blue-400 font-semibold">Deposit</span> (Nạp tiền)</li>
+                          <li>Chọn network tương ứng (Ethereum hoặc BSC)</li>
+                          <li>Sao chép địa chỉ ví (bắt đầu bằng <span className="text-blue-400 font-mono">0x</span>)</li>
+                          <li className="text-yellow-400 font-semibold">⚠️ QUAN TRỌNG: Chọn đúng network! Gửi sai network sẽ mất tiền!</li>
+                        </ol>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ USDT</label>
-                    <input
-                      type="text"
-                      value={settings.usdtAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, usdtAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="TR7..."
-                    />
+
+                  {/* USDT */}
+                  <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <i className="fas fa-coins text-green-400"></i>
+                      USDT (Tether)
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Địa Chỉ USDT</label>
+                        <input
+                          type="text"
+                          value={settings.usdtAddress || ''}
+                          onChange={(e) => setSettings({ ...settings, usdtAddress: e.target.value })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                          placeholder="0x... hoặc T..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
+                        <select
+                          value={settings.usdtNetwork || 'tron'}
+                          onChange={(e) => setSettings({ ...settings, usdtNetwork: e.target.value as any })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
+                        >
+                          <option value="tron">TRX - Tron (TRC20)</option>
+                        </select>
+                      </div>
+                      <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                        <h5 className="font-semibold text-sm text-green-300 mb-2 flex items-center gap-2">
+                          <i className="fas fa-info-circle"></i>
+                          Hướng dẫn lấy địa chỉ USDT từ Binance:
+                        </h5>
+                        <ol className="text-xs text-gray-300 space-y-1.5 list-decimal list-inside ml-2">
+                          <li>Mở app Binance → Chọn <span className="text-green-400 font-semibold">Wallet</span></li>
+                          <li>Chọn <span className="text-green-400 font-semibold">Fiat and Spot</span> hoặc <span className="text-green-400 font-semibold">Funding</span></li>
+                          <li>Tìm và chọn <span className="text-green-400 font-semibold">USDT (Tether)</span></li>
+                          <li>Nhấn <span className="text-green-400 font-semibold">Deposit</span> (Nạp tiền)</li>
+                          <li>Chọn network: <span className="text-green-400 font-semibold">TRC20</span> (Tron) - rẻ nhất và phổ biến nhất</li>
+                          <li>Sao chép địa chỉ ví (bắt đầu bằng <span className="text-green-400 font-mono">T</span>)</li>
+                          <li className="text-yellow-400 font-semibold">⚠️ QUAN TRỌNG: Chỉ hỗ trợ USDT trên Tron (TRC20)!</li>
+                        </ol>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ USDC</label>
-                    <input
-                      type="text"
-                      value={settings.usdcAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, usdcAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x..."
-                    />
+
+                  {/* BNB */}
+                  <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <i className="fas fa-coins text-yellow-400"></i>
+                      BNB (Binance Coin)
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Địa Chỉ BNB</label>
+                        <input
+                          type="text"
+                          value={settings.bnbAddress || ''}
+                          onChange={(e) => setSettings({ ...settings, bnbAddress: e.target.value })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                          placeholder="0x... hoặc bnb..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
+                        <select
+                          value={settings.bnbNetwork || 'bsc'}
+                          onChange={(e) => setSettings({ ...settings, bnbNetwork: e.target.value as any })}
+                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
+                        >
+                          <option value="bsc">BSC - BNB Smart Chain (BEP20)</option>
+                        </select>
+                      </div>
+                      <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        <h5 className="font-semibold text-sm text-yellow-300 mb-2 flex items-center gap-2">
+                          <i className="fas fa-info-circle"></i>
+                          Hướng dẫn lấy địa chỉ BNB từ Binance:
+                        </h5>
+                        <ol className="text-xs text-gray-300 space-y-1.5 list-decimal list-inside ml-2">
+                          <li>Mở app Binance → Chọn <span className="text-yellow-400 font-semibold">Wallet</span></li>
+                          <li>Chọn <span className="text-yellow-400 font-semibold">Fiat and Spot</span> hoặc <span className="text-yellow-400 font-semibold">Funding</span></li>
+                          <li>Tìm và chọn <span className="text-yellow-400 font-semibold">BNB (Binance Coin)</span></li>
+                          <li>Nhấn <span className="text-yellow-400 font-semibold">Deposit</span> (Nạp tiền)</li>
+                          <li>Chọn network: <span className="text-yellow-400 font-semibold">BEP20 (BSC)</span> - Binance Smart Chain</li>
+                          <li>Sao chép địa chỉ ví (bắt đầu bằng <span className="text-yellow-400 font-mono">0x</span>)</li>
+                          <li className="text-yellow-400 font-semibold">⚠️ QUAN TRỌNG: Chỉ hỗ trợ BNB trên BSC (BEP20)!</li>
+                        </ol>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Litecoin (LTC)</label>
-                    <input
-                      type="text"
-                      value={settings.litecoinAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, litecoinAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="ltc1..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Dogecoin (DOGE)</label>
-                    <input
-                      type="text"
-                      value={settings.dogecoinAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, dogecoinAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="D..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Solana (SOL)</label>
-                    <input
-                      type="text"
-                      value={settings.solanaAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, solanaAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="9Wz..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ Bitcoin Cash (BCH)</label>
-                    <input
-                      type="text"
-                      value={settings.bitcoinCashAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, bitcoinCashAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="bitcoincash:..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ XRP (Ripple)</label>
-                    <input
-                      type="text"
-                      value={settings.xrpAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, xrpAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="r..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ BNB (Binance Coin)</label>
-                    <input
-                      type="text"
-                      value={settings.bnbAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, bnbAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x... hoặc bnb..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ TRX (Tron)</label>
-                    <input
-                      type="text"
-                      value={settings.trxAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, trxAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="T..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ MATIC (Polygon)</label>
-                    <input
-                      type="text"
-                      value={settings.maticAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, maticAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ AVAX (Avalanche)</label>
-                    <input
-                      type="text"
-                      value={settings.avaxAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, avaxAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ DOT (Polkadot)</label>
-                    <input
-                      type="text"
-                      value={settings.dotAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, dotAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="1..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ ADA (Cardano)</label>
-                    <input
-                      type="text"
-                      value={settings.adaAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, adaAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="addr1..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-semibold">Địa Chỉ SHIB (Shiba Inu)</label>
-                    <input
-                      type="text"
-                      value={settings.shibAddress || ''}
-                      onChange={(e) => setSettings({ ...settings, shibAddress: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
-                      placeholder="0x..."
-                    />
-                  </div>
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-gray-300 text-sm">
+                    <i className="fas fa-info-circle text-blue-400 mr-2"></i>
+                    Chỉ hỗ trợ 4 loại crypto phổ biến nhất: BTC, ETH, USDT, BNB. Mỗi loại có thể chọn mạng lưới khác nhau.
+                  </p>
                 </div>
                 <div>
                   <label className="block mb-2 font-semibold">Khóa API (nếu có)</label>

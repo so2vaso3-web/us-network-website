@@ -18,7 +18,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0e27] text-white">
       <VisitorTracker />
-      <IntroBanner />
+      {/* TẠM THỜI TẮT INTROBANNER ĐỂ TEST */}
+      {/* <IntroBanner /> */}
       <TrustBanner />
       <Header />
       <Hero />

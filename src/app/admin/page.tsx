@@ -16,27 +16,65 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // Check authentication on mount
-    if (typeof window !== 'undefined') {
-      const authData = localStorage.getItem('adminAuth');
-      if (authData) {
+    // Check authentication on mount với timeout để đảm bảo không bị stuck
+    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
+    
+    const checkAuth = () => {
+      if (typeof window !== 'undefined' && isMounted) {
         try {
-          const parsed = JSON.parse(authData);
-          if (parsed.isAuthenticated && parsed.expiresAt > Date.now()) {
-            setIsAuthenticated(true);
+          const authData = localStorage.getItem('adminAuth');
+          if (authData) {
+            try {
+              const parsed = JSON.parse(authData);
+              if (parsed.isAuthenticated && parsed.expiresAt && parsed.expiresAt > Date.now()) {
+                if (isMounted) setIsAuthenticated(true);
+              } else {
+                // Auth expired or invalid
+                localStorage.removeItem('adminAuth');
+                if (isMounted) setIsAuthenticated(false);
+              }
+            } catch (e) {
+              console.error('Error parsing auth data:', e);
+              localStorage.removeItem('adminAuth');
+              if (isMounted) setIsAuthenticated(false);
+            }
           } else {
-            // Auth expired
-            localStorage.removeItem('adminAuth');
-            setIsAuthenticated(false);
+            if (isMounted) setIsAuthenticated(false);
           }
-        } catch (e) {
-          localStorage.removeItem('adminAuth');
+        } catch (error) {
+          console.error('Error checking auth:', error);
+          if (isMounted) setIsAuthenticated(false);
+        } finally {
+          // Luôn set checkingAuth = false để không bị stuck
+          if (isMounted) setCheckingAuth(false);
+        }
+      } else {
+        // Server-side: skip auth check
+        if (isMounted) {
+          setCheckingAuth(false);
           setIsAuthenticated(false);
         }
       }
-      setCheckingAuth(false);
-    }
-  }, []);
+    };
+    
+    // Chạy ngay lập tức
+    checkAuth();
+    
+    // Timeout backup - đảm bảo luôn set checkingAuth = false sau 2 giây
+    timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setCheckingAuth(false);
+      }
+    }, 2000);
+    
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []); // Chỉ chạy 1 lần khi mount
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -54,10 +92,10 @@ export default function AdminPage() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27] text-white flex items-center justify-center">
         <div className="text-center">
           <i className="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
-          <p className="text-gray-400">Checking authentication...</p>
+          <p className="text-gray-300 text-lg">Đang kiểm tra xác thực...</p>
         </div>
       </div>
     );
