@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'US Mobile Networks - Premium Network Packages',
-  description: 'Get the best 4G and 5G mobile plans from major US carriers',
+  title: 'Best Mobile Plans USA | Cell Phone Plans 2025',
+  description: 'Compare and buy the best cell phone plans from Verizon, T-Mobile, AT&T, and more. Affordable unlimited data plans, prepaid options, and 5G coverage.',
   icons: {
     icon: [
       {
