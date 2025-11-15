@@ -31,12 +31,22 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
     
     // Try Redis from Marketplace (REDIS_URL)
     if (process.env.REDIS_URL) {
+      let client: any = null;
       try {
         const { createClient } = require('redis');
-        const client = createClient({ url: process.env.REDIS_URL });
-        await client.connect();
+        client = createClient({ 
+          url: process.env.REDIS_URL,
+          socket: {
+            connectTimeout: 10000,
+            reconnectStrategy: false
+          }
+        });
+        
+        if (!client.isOpen) {
+          await client.connect();
+        }
+        
         const redisSettings = await client.get(STORAGE_KEY);
-        await client.quit();
         
         if (redisSettings) {
           const parsed = JSON.parse(redisSettings);
@@ -45,6 +55,8 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
       } catch (e) {
         console.error('Error loading from Redis:', e);
         // Fall through to safe fallback
+      } finally {
+        // Don't quit - connection will be reused or closed by serverless function cleanup
       }
     }
     
@@ -96,25 +108,41 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
     
     // Try Redis from Marketplace (REDIS_URL)
     if (process.env.REDIS_URL) {
+      let client: any = null;
       try {
         const { createClient } = require('redis');
-        const client = createClient({ 
+        client = createClient({ 
           url: process.env.REDIS_URL,
           socket: {
-            connectTimeout: 5000,
+            connectTimeout: 10000,
             reconnectStrategy: false
           }
         });
         
-        await client.connect();
+        // Connect only if not already connected
+        if (!client.isOpen) {
+          await client.connect();
+        }
+        
         await client.set(STORAGE_KEY, JSON.stringify(encryptedSettings));
-        await client.quit();
         console.log('✅ Settings saved to Redis (persistent, encrypted)');
+        
+        // Don't quit - keep connection alive for next request
+        // Only quit if we're sure we won't need it again soon
         return;
       } catch (e: any) {
         console.error('❌ Error saving settings to Redis:', e?.message || e);
-        console.error('Redis URL:', process.env.REDIS_URL ? 'Set' : 'Not set');
-        // Don't throw - let it fall through to show user-friendly error
+        console.error('Redis URL:', process.env.REDIS_URL ? 'Set (format: redis://...)' : 'Not set');
+        
+        // Try to cleanup if client exists
+        if (client && client.isOpen) {
+          try {
+            await client.quit();
+          } catch (quitError) {
+            // Ignore quit errors
+          }
+        }
+        
         throw new Error(`Redis connection failed: ${e?.message || 'Unknown error'}`);
       }
     }
