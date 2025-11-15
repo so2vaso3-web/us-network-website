@@ -33,12 +33,23 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
     if (process.env.REDIS_URL) {
       let client: any = null;
       try {
-        // Validate REDIS_URL format
-        const redisUrl = process.env.REDIS_URL.trim();
+        // Normalize REDIS_URL format
+        let redisUrl: string | null = process.env.REDIS_URL.trim();
+        
+        // Auto-fix: Add redis:// prefix if missing
         if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
-          console.error('Invalid Redis URL format:', redisUrl.substring(0, 30));
-          // Fall through to safe fallback
-        } else {
+          // If it looks like a host:port format, add redis:// prefix
+          if (redisUrl.includes(':') && !redisUrl.includes('://')) {
+            console.warn('⚠️ REDIS_URL missing prefix, auto-adding redis://');
+            redisUrl = `redis://${redisUrl}`;
+          } else {
+            console.error('Invalid Redis URL format:', redisUrl.substring(0, 30));
+            // Fall through to safe fallback
+            redisUrl = null;
+          }
+        }
+        
+        if (redisUrl) {
           const { createClient } = require('redis');
           client = createClient({ 
             url: redisUrl,
@@ -123,10 +134,18 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
     if (process.env.REDIS_URL) {
       let client: any = null;
       try {
-        // Validate REDIS_URL format
-        const redisUrl = process.env.REDIS_URL.trim();
+        // Normalize REDIS_URL format
+        let redisUrl = process.env.REDIS_URL.trim();
+        
+        // Auto-fix: Add redis:// prefix if missing
         if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
-          throw new Error(`Invalid Redis URL format. Must start with redis:// or rediss://. Got: ${redisUrl.substring(0, 20)}...`);
+          // If it looks like a host:port format, add redis:// prefix
+          if (redisUrl.includes(':') && !redisUrl.includes('://')) {
+            console.warn('⚠️ REDIS_URL missing prefix, auto-adding redis://');
+            redisUrl = `redis://${redisUrl}`;
+          } else {
+            throw new Error(`Invalid Redis URL format. Must start with redis:// or rediss://. Got: ${redisUrl.substring(0, 30)}...`);
+          }
         }
         
         const { createClient } = require('redis');
