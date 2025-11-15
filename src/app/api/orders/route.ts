@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { storage } from '@/lib/storage';
 
-const DATA_FILE = join(process.cwd(), 'data', 'orders.json');
+const STORAGE_KEY = 'orders';
 
-// Đảm bảo thư mục data tồn tại
-function ensureDataDir() {
-  const dataDir = join(process.cwd(), 'data');
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
-  }
-}
-
-// Đọc orders từ file
+// Đọc orders từ storage
 function readOrders(): any[] {
   try {
-    ensureDataDir();
-    if (existsSync(DATA_FILE)) {
-      const fileContent = readFileSync(DATA_FILE, 'utf-8');
-      const orders = JSON.parse(fileContent);
-      if (Array.isArray(orders)) {
-        return orders;
-      }
+    const orders = storage.get(STORAGE_KEY);
+    if (Array.isArray(orders)) {
+      return orders;
     }
   } catch (error) {
-    console.error('Error reading orders file:', error);
+    console.error('Error reading orders:', error);
   }
-  // Nếu không có file hoặc lỗi, trả về mảng rỗng và tạo file
-  ensureDataDir();
-  writeFileSync(DATA_FILE, JSON.stringify([], null, 2), 'utf-8');
+  // Nếu không có data, trả về mảng rỗng và lưu
+  storage.set(STORAGE_KEY, []);
   return [];
 }
 
-// Lưu orders vào file
+// Lưu orders vào storage
 function saveOrders(orders: any[]): void {
   try {
-    ensureDataDir();
-    writeFileSync(DATA_FILE, JSON.stringify(orders, null, 2), 'utf-8');
+    storage.set(STORAGE_KEY, orders);
   } catch (error) {
-    console.error('Error saving orders file:', error);
+    console.error('Error saving orders:', error);
     throw error;
   }
 }

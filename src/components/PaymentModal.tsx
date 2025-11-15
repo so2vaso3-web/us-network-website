@@ -1,6 +1,7 @@
 'use client';
 
 import { addOrderToServer, updateOrderOnServer } from '@/lib/useOrders';
+import { useSettings } from '@/lib/useSettings';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Package } from '@/types';
@@ -11,6 +12,7 @@ interface PaymentModalProps {
 }
 
 export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
+  const { settings } = useSettings();
   const [step, setStep] = useState<'customer-info' | 'payment-method'>('customer-info');
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
@@ -35,30 +37,42 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   // Check if crypto address is configured in admin settings (not fallback)
   const checkCryptoAddress = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          // Map selected crypto to correct address key (chỉ 4 crypto: BTC, ETH, USDT, BNB)
-          const addressMap: Record<string, string> = {
-            bitcoin: 'bitcoinAddress',
-            ethereum: 'ethereumAddress',
-            usdt: 'usdtAddress',
-            bnb: 'bnbAddress',
-          };
-          
-          const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
-          const address = parsed[addressKey];
-          const hasAddress = address && typeof address === 'string' && address.trim() !== '';
-          return !!hasAddress;
-        } catch (e) {
-          return false;
+    if (!settings) {
+      // Fallback to localStorage if settings not loaded yet
+      if (typeof window !== 'undefined') {
+        const localSettings = localStorage.getItem('adminSettings');
+        if (localSettings) {
+          try {
+            const parsed = JSON.parse(localSettings);
+            const addressMap: Record<string, string> = {
+              bitcoin: 'bitcoinAddress',
+              ethereum: 'ethereumAddress',
+              usdt: 'usdtAddress',
+              bnb: 'bnbAddress',
+            };
+            const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
+            const address = parsed[addressKey];
+            return !!(address && typeof address === 'string' && address.trim() !== '');
+          } catch (e) {
+            return false;
+          }
         }
       }
+      return false;
     }
-    return false;
-  }, [selectedCrypto]);
+
+    // Use settings from server
+    const addressMap: Record<string, string> = {
+      bitcoin: 'bitcoinAddress',
+      ethereum: 'ethereumAddress',
+      usdt: 'usdtAddress',
+      bnb: 'bnbAddress',
+    };
+    
+    const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
+    const address = (settings as any)[addressKey];
+    return !!(address && typeof address === 'string' && address.trim() !== '');
+  }, [selectedCrypto, settings]);
 
   // Update hasCryptoAddress state when selectedCrypto or paymentMethod changes
   useEffect(() => {
@@ -102,28 +116,44 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   // Get crypto address from settings only (no fallback)
   const getCryptoAddressFromSettings = () => {
-    if (typeof window !== 'undefined') {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          // Map selected crypto to correct address key (chỉ 4 crypto: BTC, ETH, USDT, BNB)
-          const addressMap: Record<string, string> = {
-            bitcoin: 'bitcoinAddress',
-            ethereum: 'ethereumAddress',
-            usdt: 'usdtAddress',
-            bnb: 'bnbAddress',
-          };
-          
-          const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
-          const address = parsed[addressKey];
-          if (address && typeof address === 'string' && address.trim() !== '') {
-            return address.trim();
+    if (!settings) {
+      // Fallback to localStorage if settings not loaded yet
+      if (typeof window !== 'undefined') {
+        const localSettings = localStorage.getItem('adminSettings');
+        if (localSettings) {
+          try {
+            const parsed = JSON.parse(localSettings);
+            const addressMap: Record<string, string> = {
+              bitcoin: 'bitcoinAddress',
+              ethereum: 'ethereumAddress',
+              usdt: 'usdtAddress',
+              bnb: 'bnbAddress',
+            };
+            const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
+            const address = parsed[addressKey];
+            if (address && typeof address === 'string' && address.trim() !== '') {
+              return address.trim();
+            }
+          } catch (e) {
+            console.error('Error loading crypto addresses:', e);
           }
-        } catch (e) {
-          console.error('Error loading crypto addresses:', e);
         }
       }
+      return '';
+    }
+
+    // Use settings from server
+    const addressMap: Record<string, string> = {
+      bitcoin: 'bitcoinAddress',
+      ethereum: 'ethereumAddress',
+      usdt: 'usdtAddress',
+      bnb: 'bnbAddress',
+    };
+    
+    const addressKey = addressMap[selectedCrypto] || `${selectedCrypto}Address`;
+    const address = (settings as any)[addressKey];
+    if (address && typeof address === 'string' && address.trim() !== '') {
+      return address.trim();
     }
     return '';
   };
@@ -135,19 +165,26 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   // Auto-select first available crypto and network when switching to crypto payment
   useEffect(() => {
-    if (step === 'payment-method' && paymentMethod === 'crypto' && typeof window !== 'undefined') {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
+    if (step === 'payment-method' && paymentMethod === 'crypto') {
+      try {
+        const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+          try {
+            const local = localStorage.getItem('adminSettings');
+            return local ? JSON.parse(local) : null;
+          } catch {
+            return null;
+          }
+        })() : null);
+
+        if (currentSettings) {
           // Chỉ giữ 4 crypto phổ biến nhất: BTC, ETH, USDT, BNB
           const cryptos = [
-            { key: 'bitcoin', address: parsed.bitcoinAddress },
-            { key: 'ethereum', address: parsed.ethereumAddress, network: parsed.ethereumNetwork || 'ethereum' },
-            { key: 'usdt', address: parsed.usdtAddress, network: parsed.usdtNetwork || 'ethereum' },
-            { key: 'bnb', address: parsed.bnbAddress, network: parsed.bnbNetwork || 'bsc' },
+            { key: 'bitcoin', address: currentSettings.bitcoinAddress },
+            { key: 'ethereum', address: currentSettings.ethereumAddress, network: currentSettings.ethereumNetwork || 'ethereum' },
+            { key: 'usdt', address: currentSettings.usdtAddress, network: currentSettings.usdtNetwork || 'ethereum' },
+            { key: 'bnb', address: currentSettings.bnbAddress, network: currentSettings.bnbNetwork || 'bsc' },
           ];
-          
+            
           const availableCryptos = cryptos.filter(c => c.address && c.address.trim() !== '');
           
           // If current selected crypto doesn't have address, switch to first available
@@ -163,12 +200,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               setSelectedNetwork(currentCrypto.network);
             }
           }
-        } catch (e) {
-          console.error('Error checking crypto addresses:', e);
         }
+      } catch (e) {
+        console.error('Error checking crypto addresses:', e);
       }
     }
-  }, [step, paymentMethod, selectedCrypto]);
+  }, [step, paymentMethod, selectedCrypto, settings]);
   
   // Update network when crypto changes
   useEffect(() => {
@@ -283,12 +320,20 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
   // Load PayPal SDK when PayPal is selected
   useEffect(() => {
     if (step === 'payment-method' && paymentMethod === 'paypal' && typeof window !== 'undefined' && !paypalLoaded) {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          const clientId = parsed.paypalClientId;
-          const currency = parsed.paypalCurrency || 'USD';
+      try {
+        // Get settings from hook or localStorage fallback
+        const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+          try {
+            const local = localStorage.getItem('adminSettings');
+            return local ? JSON.parse(local) : null;
+          } catch {
+            return null;
+          }
+        })() : null);
+
+        if (currentSettings) {
+          const clientId = currentSettings.paypalClientId;
+          const currency = currentSettings.paypalCurrency || 'USD';
           
           if (!clientId) {
             console.error('PayPal Client ID not found');
@@ -341,16 +386,16 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
           };
           document.body.appendChild(script);
           console.log('PayPal SDK script added to page');
-        } catch (e) {
-          console.error('Error loading PayPal:', e);
-          alert('Error loading PayPal settings. Please check your configuration.');
+        } else {
+          console.error('Admin settings not found');
+          alert('PayPal settings not configured. Please configure PayPal in Admin Panel.');
         }
-      } else {
-        console.error('Admin settings not found');
-        alert('PayPal settings not configured. Please configure PayPal in Admin Panel.');
+      } catch (e) {
+        console.error('Error loading PayPal:', e);
+        alert('Error loading PayPal settings. Please check your configuration.');
       }
     }
-  }, [step, paymentMethod, paypalLoaded]);
+  }, [step, paymentMethod, paypalLoaded, settings]);
 
       // Render PayPal button directly when SDK is loaded and ready
       useEffect(() => {
@@ -390,29 +435,30 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
         container.innerHTML = '';
         container.removeAttribute('data-paypal-rendered');
 
-        const settings = localStorage.getItem('adminSettings');
-        if (!settings) {
+        // Get settings from hook or localStorage fallback
+        const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+          try {
+            const local = localStorage.getItem('adminSettings');
+            return local ? JSON.parse(local) : null;
+          } catch {
+            return null;
+          }
+        })() : null);
+
+        if (!currentSettings) {
           console.error('PayPal: Settings not found');
           return;
         }
 
-        let parsed: any = {};
-        try {
-          parsed = JSON.parse(settings);
-        } catch (e) {
-          console.error('PayPal: Error parsing settings', e);
-          return;
-        }
-
-        const clientId = parsed.paypalClientId;
+        const clientId = currentSettings.paypalClientId;
         if (!clientId) {
           console.error('PayPal: Client ID not found');
           return;
         }
 
-        const currency = parsed.paypalCurrency || 'USD';
-        const returnUrl = parsed.paypalReturnUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/success' : '/payment/success');
-        const cancelUrl = parsed.paypalCancelUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/cancel' : '/payment/cancel');
+        const currency = currentSettings.paypalCurrency || 'USD';
+        const returnUrl = currentSettings.paypalReturnUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/success' : '/payment/success');
+        const cancelUrl = currentSettings.paypalCancelUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/cancel' : '/payment/cancel');
         const paypal = (window as any).paypal;
         const orderId = `ORD-${Date.now()}`;
 
@@ -715,9 +761,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1f3a] rounded-lg sm:rounded-xl p-3 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative scroll-smooth"
+        className="bg-[#1a1f3a] rounded-lg sm:rounded-xl p-3 sm:p-6 md:p-8 max-w-2xl w-full max-h-[85vh] sm:max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative scroll-smooth"
         onClick={(e) => e.stopPropagation()}
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          maxHeight: 'calc(100vh - 3rem)',
+        }}
       >
         {/* Progress indicator - Only show if not success */}
         {!paymentSuccess && (
@@ -810,7 +859,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </div>
               </div>
             ) : step === 'customer-info' ? (
-          <div className="space-y-3 sm:space-y-5">
+          <div className="space-y-3 sm:space-y-5 pb-24 sm:pb-0">
             {/* Important Notice */}
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5 sm:p-4 mb-1.5 sm:mb-2">
               <div className="flex items-start gap-2 sm:gap-3">
@@ -912,7 +961,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   disabled={!isFormValid()}
                   className={`w-full px-3 sm:px-6 py-3 sm:py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 mt-4 sm:mt-6 mb-2 sm:mb-0 text-base sm:text-lg min-h-[48px] sm:min-h-[48px] ${
                     isFormValid()
-                      ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-blue-500/50 cursor-pointer active:scale-[0.98]'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-green-500/50 cursor-pointer active:scale-[0.98]'
                       : 'bg-gray-700/50 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
@@ -1043,18 +1092,16 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                                 <span className="text-gray-400">Mode:</span>
                                 <span className="ml-2 font-semibold text-white">
                                   {(() => {
-                                    if (typeof window !== 'undefined') {
-                                      const settings = localStorage.getItem('adminSettings');
-                                      if (settings) {
-                                        try {
-                                          const parsed = JSON.parse(settings);
-                                          return parsed.paypalMode === 'live' ? 'Live' : 'Sandbox';
-                                        } catch (e) {
-                                          return 'Sandbox';
-                                        }
+                                    const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+                                      try {
+                                        const local = localStorage.getItem('adminSettings');
+                                        return local ? JSON.parse(local) : null;
+                                      } catch {
+                                        return null;
                                       }
-                                    }
-                                    return 'Sandbox';
+                                    })() : null);
+                                    
+                                    return currentSettings?.paypalMode === 'live' ? 'Live' : 'Sandbox';
                                   })()}
                                 </span>
                               </div>
@@ -1099,23 +1146,21 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                           <h5 className="font-medium text-gray-300 mb-1">PayPal Integration</h5>
                           <p className="text-gray-400 text-sm leading-relaxed">
                             {(() => {
-                              if (typeof window !== 'undefined') {
-                                const settings = localStorage.getItem('adminSettings');
-                                if (settings) {
-                                  try {
-                                    const parsed = JSON.parse(settings);
-                                    if (parsed.paypalClientId && parsed.paypalClientSecret) {
-                                      const mode = parsed.paypalMode === 'live' ? 'Live (Production)' : 'Sandbox (Test)';
-                                      return `PayPal is configured in ${mode} mode. Click the PayPal button below to complete your payment.`;
-                                    } else {
-                                      return 'PayPal Client ID or Client Secret is missing. Please configure PayPal settings in Admin Panel.';
-                                    }
-                                  } catch (e) {
-                                    return 'Unable to load PayPal settings.';
-                                  }
+                              const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+                                try {
+                                  const local = localStorage.getItem('adminSettings');
+                                  return local ? JSON.parse(local) : null;
+                                } catch {
+                                  return null;
                                 }
+                              })() : null);
+                              
+                              if (currentSettings?.paypalClientId && currentSettings?.paypalClientSecret) {
+                                const mode = currentSettings.paypalMode === 'live' ? 'Live (Production)' : 'Sandbox (Test)';
+                                return `PayPal is configured in ${mode} mode. Click the PayPal button below to complete your payment.`;
+                              } else {
+                                return 'PayPal Client ID or Client Secret is missing. Please configure PayPal settings in Admin Panel.';
                               }
-                              return 'PayPal settings not configured. Please set up PayPal in Admin Panel.';
                             })()}
                           </p>
                         </div>

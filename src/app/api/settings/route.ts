@@ -1,35 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { storage } from '@/lib/storage';
 
-const SETTINGS_FILE = join(process.cwd(), 'data', 'adminSettings.json');
-
-function ensureDataDir() {
-  const dataDir = join(process.cwd(), 'data');
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
-  }
-}
+const STORAGE_KEY = 'adminSettings';
 
 function readSettings(): any {
   try {
-    ensureDataDir();
-    if (existsSync(SETTINGS_FILE)) {
-      const content = readFileSync(SETTINGS_FILE, 'utf-8');
-      return JSON.parse(content);
+    const settings = storage.get(STORAGE_KEY);
+    if (settings && typeof settings === 'object') {
+      return settings;
     }
   } catch (error) {
-    console.error('Error reading settings file:', error);
+    console.error('Error reading settings:', error);
   }
   return {};
 }
 
 function saveSettings(settings: any): void {
   try {
-    ensureDataDir();
-    writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+    storage.set(STORAGE_KEY, settings);
   } catch (error) {
-    console.error('Error saving settings file:', error);
+    console.error('Error saving settings:', error);
     throw error;
   }
 }

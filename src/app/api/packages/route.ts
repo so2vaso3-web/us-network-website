@@ -1,46 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import { Package } from '@/types';
 import { defaultPackages } from '@/lib/data';
+import { storage } from '@/lib/storage';
 
-const DATA_FILE = join(process.cwd(), 'data', 'packages.json');
+const STORAGE_KEY = 'packages';
 
-// Đảm bảo thư mục data tồn tại
-function ensureDataDir() {
-  const dataDir = join(process.cwd(), 'data');
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
-  }
-}
-
-// Đọc packages từ file
+// Đọc packages từ storage
 function readPackages(): Package[] {
   try {
-    ensureDataDir();
-    if (existsSync(DATA_FILE)) {
-      const fileContent = readFileSync(DATA_FILE, 'utf-8');
-      const packages = JSON.parse(fileContent);
-      if (Array.isArray(packages) && packages.length > 0) {
-        return packages;
-      }
+    const packages = storage.get(STORAGE_KEY);
+    if (Array.isArray(packages) && packages.length > 0) {
+      return packages;
     }
   } catch (error) {
-    console.error('Error reading packages file:', error);
+    console.error('Error reading packages:', error);
   }
-  // Nếu không có file hoặc lỗi, trả về default và tạo file
-  ensureDataDir();
-  writeFileSync(DATA_FILE, JSON.stringify(defaultPackages, null, 2), 'utf-8');
+  // Nếu không có data, trả về default và lưu
+  storage.set(STORAGE_KEY, defaultPackages);
   return defaultPackages;
 }
 
-// Lưu packages vào file
+// Lưu packages vào storage
 function savePackages(packages: Package[]): void {
   try {
-    ensureDataDir();
-    writeFileSync(DATA_FILE, JSON.stringify(packages, null, 2), 'utf-8');
+    storage.set(STORAGE_KEY, packages);
   } catch (error) {
-    console.error('Error saving packages file:', error);
+    console.error('Error saving packages:', error);
     throw error;
   }
 }

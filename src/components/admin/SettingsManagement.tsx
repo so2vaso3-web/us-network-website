@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { AdminSettings } from '@/types';
+import { useSettings, saveSettingsToServer, notifySettingsUpdated } from '@/lib/useSettings';
 
 export default function SettingsManagement() {
+  const { settings: serverSettings, isLoading } = useSettings();
   const [settings, setSettings] = useState<AdminSettings>({
     websiteName: 'US Mobile Networks',
     paypalEnabled: true,
@@ -18,41 +20,24 @@ export default function SettingsManagement() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('adminSettings');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setSettings(parsed);
-        } catch (e) {
-          console.error('Error loading settings:', e);
-        }
-      }
+    if (serverSettings) {
+      setSettings(serverSettings);
     }
-  }, []);
+  }, [serverSettings]);
 
   const handleSave = async () => {
-    // Save to localStorage
+    // Lưu vào localStorage làm cache tạm thời
     localStorage.setItem('adminSettings', JSON.stringify(settings));
     
-    // Also save to server for Telegram API access
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ settings }),
-      });
-      
-      if (response.ok) {
-        alert('Đã lưu cài đặt thành công! Vui lòng refresh trang mua để xem thay đổi.');
-      } else {
-        alert('Đã lưu vào local storage, nhưng không thể lưu lên server. Chat Telegram có thể không hoạt động.');
-      }
-    } catch (error) {
-      console.error('Error saving settings to server:', error);
-      alert('Đã lưu vào local storage, nhưng không thể lưu lên server. Chat Telegram có thể không hoạt động.');
+    // Lưu lên server để đồng bộ với tất cả thiết bị
+    const success = await saveSettingsToServer(settings);
+    
+    if (success) {
+      alert('Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.');
+    } else {
+      alert('Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.');
+      // Vẫn dispatch event để cập nhật trong tab hiện tại
+      notifySettingsUpdated();
     }
   };
 

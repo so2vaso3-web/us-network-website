@@ -1,25 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSettings } from '@/lib/useSettings';
 
 export default function CarrierSection() {
+  const { settings } = useSettings();
   const [carrierLogos, setCarrierLogos] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          if (parsed.carrierLogos) {
-            setCarrierLogos(parsed.carrierLogos);
-          }
-        } catch (e) {
-          console.error('Error loading carrier logos:', e);
-        }
-      }
+    if (settings?.carrierLogos) {
+      setCarrierLogos(settings.carrierLogos);
     }
-  }, []);
+  }, [settings]);
 
   const carriers = [
     { key: 'verizon', name: 'Verizon', color: 'text-red-500' },
