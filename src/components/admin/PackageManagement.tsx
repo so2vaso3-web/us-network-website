@@ -73,6 +73,7 @@ export default function PackageManagement() {
 
   useEffect(() => {
     loadPackages(true); // Force load lần đầu
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Chỉ chạy 1 lần khi mount
 
   useEffect(() => {
@@ -87,6 +88,7 @@ export default function PackageManagement() {
     return () => {
       window.removeEventListener('packagesUpdated', handlePackagesUpdated);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasLocalChanges, showForm]); // Re-register listener khi hasLocalChanges hoặc showForm thay đổi
 
   const savePackages = async (updatedPackages: Package[]) => {

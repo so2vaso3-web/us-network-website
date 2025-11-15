@@ -241,7 +241,12 @@ export const storage = {
    * Check if key exists
    */
   exists: (key: string): boolean => {
-    return adapter.exists(key);
+    const result = adapter.exists(key);
+    // Nếu là Promise, return false (sẽ check async ở API route)
+    if (result instanceof Promise) {
+      return false;
+    }
+    return result as boolean;
   },
 
   /**
