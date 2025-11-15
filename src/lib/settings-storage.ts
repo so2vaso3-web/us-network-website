@@ -14,7 +14,7 @@ const STORAGE_KEY = 'adminSettings';
  */
 export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> {
   try {
-    // CHỈ dùng Vercel KV, không dùng filesystem
+    // Try Vercel KV first (KV_REST_API_URL + KV_REST_API_TOKEN)
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       try {
         const { kv } = require('@vercel/kv');
@@ -25,17 +25,36 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
         }
       } catch (e) {
         console.error('Error loading from Vercel KV:', e);
+        // Fall through to try Redis
+      }
+    }
+    
+    // Try Redis from Marketplace (REDIS_URL)
+    if (process.env.REDIS_URL) {
+      try {
+        const { createClient } = require('redis');
+        const client = createClient({ url: process.env.REDIS_URL });
+        await client.connect();
+        const redisSettings = await client.get(STORAGE_KEY);
+        await client.quit();
+        
+        if (redisSettings) {
+          const parsed = JSON.parse(redisSettings);
+          return decrypt ? decryptSettings(parsed) : parsed;
+        }
+      } catch (e) {
+        console.error('Error loading from Redis:', e);
         // Fall through to safe fallback
       }
-    } else {
-      // Fallback for local development: use in-memory storage
-      if (process.env.NODE_ENV === 'development' && typeof global !== 'undefined') {
-        // @ts-ignore
-        const devStorage = global.__devSettingsStorage;
-        if (devStorage && devStorage[STORAGE_KEY]) {
-          const devSettings = devStorage[STORAGE_KEY];
-          return decrypt ? decryptSettings(devSettings) : devSettings;
-        }
+    }
+    
+    // Fallback for local development: use in-memory storage
+    if (process.env.NODE_ENV === 'development' && typeof global !== 'undefined') {
+      // @ts-ignore
+      const devStorage = global.__devSettingsStorage;
+      if (devStorage && devStorage[STORAGE_KEY]) {
+        const devSettings = devStorage[STORAGE_KEY];
+        return decrypt ? decryptSettings(devSettings) : devSettings;
       }
     }
   } catch (error) {
@@ -62,7 +81,7 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
   const encryptedSettings = encrypt(settings);
   
   try {
-    // CHỈ lưu lên Vercel KV, không dùng filesystem
+    // Try Vercel KV first (KV_REST_API_URL + KV_REST_API_TOKEN)
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       try {
         const { kv } = require('@vercel/kv');
@@ -71,27 +90,53 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
         return;
       } catch (e) {
         console.error('❌ Error saving settings to KV:', e);
-        throw e; // Throw để caller biết có lỗi
+        // Fall through to try Redis
       }
-    } else {
-      // Fallback for local development: use in-memory storage
-      if (process.env.NODE_ENV === 'development') {
-        // Store in global memory (will be lost on restart, but works for dev)
-        if (typeof global !== 'undefined') {
-          // @ts-ignore
-          if (!global.__devSettingsStorage) {
-            // @ts-ignore
-            global.__devSettingsStorage = {};
-          }
-          // @ts-ignore
-          global.__devSettingsStorage[STORAGE_KEY] = encryptedSettings;
-          console.warn('⚠️ Vercel KV not configured. Using in-memory storage (data will be lost on restart).');
-          console.warn('   To enable persistent storage, set KV_REST_API_URL and KV_REST_API_TOKEN in Vercel.');
-          return;
-        }
-      }
-      throw new Error('Vercel KV not configured. Please set KV_REST_API_URL and KV_REST_API_TOKEN');
     }
+    
+    // Try Redis from Marketplace (REDIS_URL)
+    if (process.env.REDIS_URL) {
+      try {
+        const { createClient } = require('redis');
+        const client = createClient({ 
+          url: process.env.REDIS_URL,
+          socket: {
+            connectTimeout: 5000,
+            reconnectStrategy: false
+          }
+        });
+        
+        await client.connect();
+        await client.set(STORAGE_KEY, JSON.stringify(encryptedSettings));
+        await client.quit();
+        console.log('✅ Settings saved to Redis (persistent, encrypted)');
+        return;
+      } catch (e: any) {
+        console.error('❌ Error saving settings to Redis:', e?.message || e);
+        console.error('Redis URL:', process.env.REDIS_URL ? 'Set' : 'Not set');
+        // Don't throw - let it fall through to show user-friendly error
+        throw new Error(`Redis connection failed: ${e?.message || 'Unknown error'}`);
+      }
+    }
+    
+    // Fallback for local development: use in-memory storage
+    if (process.env.NODE_ENV === 'development') {
+      // Store in global memory (will be lost on restart, but works for dev)
+      if (typeof global !== 'undefined') {
+        // @ts-ignore
+        if (!global.__devSettingsStorage) {
+          // @ts-ignore
+          global.__devSettingsStorage = {};
+        }
+        // @ts-ignore
+        global.__devSettingsStorage[STORAGE_KEY] = encryptedSettings;
+        console.warn('⚠️ No Redis/KV configured. Using in-memory storage (data will be lost on restart).');
+        console.warn('   To enable persistent storage, connect Redis database in Vercel.');
+        return;
+      }
+    }
+    
+    throw new Error('No Redis/KV configured. Please connect Redis database in Vercel or set KV_REST_API_URL and KV_REST_API_TOKEN');
   } catch (error) {
     console.error('Error saving settings:', error);
     throw error;
