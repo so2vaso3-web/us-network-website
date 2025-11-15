@@ -474,6 +474,13 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
         try {
           const button = paypal.Buttons({
+            style: {
+              layout: 'vertical',
+              color: 'gold',
+              shape: 'rect',
+              label: 'paypal',
+              tagline: false,
+            },
             createOrder: async (data: any, actions: any) => {
               try {
                 console.log('PayPal: Creating order...');
@@ -1175,32 +1182,67 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       </div>
                     </div>
 
+                    {/* Payment Method Title */}
+                    <div className="mt-6 mb-4">
+                      <h4 className="text-lg font-semibold text-white mb-2 text-center">
+                        Thanh toán bằng PayPal hoặc thẻ tín dụng
+                      </h4>
+                      <p className="text-sm text-gray-400 text-center">
+                        Bạn có thể thanh toán bằng tài khoản PayPal hoặc thẻ tín dụng/ghi nợ
+                      </p>
+                    </div>
+
                     {/* PayPal Button Container - Render directly in modal */}
                     {paymentMethod === 'paypal' && step === 'payment-method' && (
                       <>
                         {paypalLoaded && typeof window !== 'undefined' && (window as any).paypal ? (
                           <>
-                            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-br from-yellow-500/10 via-blue-500/10 to-purple-500/10 border-2 border-yellow-500/30 rounded-xl shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300">
-                              <div ref={paypalButtonContainerRef} id="paypal-button-container" className="paypal-button-wrapper" style={{ minHeight: '50px' }}></div>
+                            <div className="mt-4 sm:mt-6">
+                              {/* PayPal Option */}
+                              <div className="mb-4">
+                                <div className="bg-gradient-to-br from-yellow-500/10 via-blue-500/10 to-purple-500/10 border-2 border-yellow-500/30 rounded-xl shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 p-4">
+                                  <div className="mb-3">
+                                    <h5 className="text-sm font-semibold text-gray-300 mb-1">PayPal</h5>
+                                    <p className="text-xs text-gray-400">Thanh toán bằng tài khoản PayPal</p>
+                                  </div>
+                                  <div ref={paypalButtonContainerRef} id="paypal-button-container" className="paypal-button-wrapper" style={{ minHeight: '50px', width: '100%' }}></div>
+                                </div>
+                              </div>
+                              
+                              {/* Card Option - PayPal SDK tự động hiển thị option thẻ tín dụng */}
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                                <div className="mb-3">
+                                  <h5 className="text-sm font-semibold text-gray-300 mb-1 flex items-center gap-2">
+                                    <i className="fas fa-credit-card text-gray-400"></i>
+                                    Thẻ tín dụng hoặc ghi nợ
+                                  </h5>
+                                  <p className="text-xs text-gray-400">Sau khi click PayPal, bạn có thể chọn thanh toán bằng thẻ</p>
+                                </div>
+                                <div className="text-center py-2">
+                                  <p className="text-xs text-gray-500 italic">
+                                    Tùy chọn thẻ sẽ xuất hiện trong cửa sổ PayPal
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                             {!paypalButtonRendered && (
                               <div className="mt-2 text-center text-sm text-gray-400">
                                 <i className="fas fa-spinner fa-spin mr-2"></i>
-                                Loading PayPal button...
+                                Đang tải PayPal...
                               </div>
                             )}
                           </>
                         ) : !paypalLoaded ? (
                           <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
                             <i className="fas fa-spinner fa-spin text-gray-400 text-xl mb-2"></i>
-                            <p className="text-gray-300 text-sm">Loading PayPal SDK...</p>
-                            <p className="text-gray-400 text-xs mt-2">Please wait while we load PayPal checkout</p>
+                            <p className="text-gray-300 text-sm">Đang tải PayPal SDK...</p>
+                            <p className="text-gray-400 text-xs mt-2">Vui lòng đợi trong khi chúng tôi tải PayPal checkout</p>
                           </div>
                         ) : (
                           <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
                             <i className="fas fa-exclamation-triangle text-red-400 text-xl mb-2"></i>
-                            <p className="text-gray-300 text-sm">PayPal SDK failed to load</p>
-                            <p className="text-gray-400 text-xs mt-2">Please check your internet connection and try again</p>
+                            <p className="text-gray-300 text-sm">PayPal SDK không tải được</p>
+                            <p className="text-gray-400 text-xs mt-2">Vui lòng kiểm tra kết nối internet và thử lại</p>
                             <button
                               onClick={() => {
                                 setPaypalLoaded(false);
@@ -1209,7 +1251,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                               }}
                               className="mt-3 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors text-sm"
                             >
-                              Reload Page
+                              Tải lại trang
                             </button>
                           </div>
                         )}
