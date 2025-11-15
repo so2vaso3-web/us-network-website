@@ -1,62 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/storage';
+import { encryptSettings, decryptSettings } from '@/lib/encryption';
 
 const STORAGE_KEY = 'adminSettings';
 
-async function readSettings(): Promise<any> {
+/**
+ * Read settings from Vercel KV only (no filesystem)
+ * Returns safe fallback if DB fails
+ */
+async function readSettingsFromKV(): Promise<any> {
   try {
-    // ƯU TIÊN load từ Vercel KV trước (persistent storage)
+    // CHỈ dùng Vercel KV, không dùng filesystem
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       try {
         const { kv } = require('@vercel/kv');
         const kvSettings = await kv.get(STORAGE_KEY);
         if (kvSettings && typeof kvSettings === 'object') {
-          // Update cache và return
-          storage.set(STORAGE_KEY, kvSettings);
-          return kvSettings;
+          // Decrypt sensitive fields before returning
+          return decryptSettings(kvSettings);
         }
       } catch (e) {
         console.error('Error loading from Vercel KV:', e);
+        // Fall through to safe fallback
       }
-    }
-    
-    // Fallback: Load từ storage (file system hoặc in-memory)
-    let settings = storage.get(STORAGE_KEY);
-    // Nếu là Promise (từ KV adapter), await nó
-    if (settings instanceof Promise) {
-      settings = await settings;
-    }
-    
-    if (settings && typeof settings === 'object') {
-      return settings;
     }
   } catch (error) {
     console.error('Error reading settings:', error);
   }
-  return {};
+  
+  // Safe fallback - return minimal safe defaults
+  return {
+    paypalEnabled: false,
+    cryptoEnabled: false,
+    websiteName: 'US Mobile Networks',
+    paypalMode: 'sandbox',
+    cryptoGateway: 'manual',
+  };
 }
 
+async function readSettings(): Promise<any> {
+  return await readSettingsFromKV();
+}
+
+/**
+ * Save settings to Vercel KV only (no filesystem)
+ * Encrypts sensitive fields before saving
+ */
 async function saveSettings(settings: any): Promise<void> {
+  // Encrypt sensitive fields before saving
+  const encryptedSettings = encryptSettings(settings);
+  
   try {
-    // ƯU TIÊN lưu lên Vercel KV trước (persistent storage)
+    // CHỈ lưu lên Vercel KV, không dùng filesystem
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       try {
         const { kv } = require('@vercel/kv');
-        await kv.set(STORAGE_KEY, settings);
-        console.log('✅ Settings saved to Vercel KV (persistent)');
-        
-        // Sau khi lưu KV thành công, update cache
-        storage.set(STORAGE_KEY, settings);
+        await kv.set(STORAGE_KEY, encryptedSettings);
+        console.log('✅ Settings saved to Vercel KV (persistent, encrypted)');
+        return;
       } catch (e) {
         console.error('❌ Error saving settings to KV:', e);
-        // Fallback: Lưu vào storage nếu KV fail
-        storage.set(STORAGE_KEY, settings);
         throw e; // Throw để caller biết có lỗi
       }
     } else {
-      // Không có KV, chỉ lưu vào storage (file system hoặc in-memory)
-      storage.set(STORAGE_KEY, settings);
-      console.log('⚠️ Settings saved to local storage (Vercel KV not configured)');
+      throw new Error('Vercel KV not configured. Please set KV_REST_API_URL and KV_REST_API_TOKEN');
     }
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -74,10 +80,19 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error in GET /api/settings:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to read settings' },
-      { status: 500 }
-    );
+    // Return safe fallback instead of error
+    return NextResponse.json({ 
+      success: true, 
+      settings: {
+        paypalEnabled: false,
+        cryptoEnabled: false,
+        websiteName: 'US Mobile Networks',
+        paypalMode: 'sandbox',
+        cryptoGateway: 'manual',
+      },
+      timestamp: new Date().toISOString(),
+      warning: 'Using fallback settings due to database error'
+    });
   }
 }
 
@@ -96,32 +111,38 @@ export async function POST(request: NextRequest) {
     // Merge with existing settings - ĐẢM BẢO KHÔNG MẤT BẤT KỲ FIELD NÀO
     const existingSettings = await readSettings();
     
-    // Merge: Giữ lại TẤT CẢ fields từ existing, chỉ update những fields có trong settings mới
-    // Điều này đảm bảo không mất PayPal Client ID, Secret, hay bất kỳ field nào
+    // MERGE LOGIC: localStorage (client) > server (DB)
+    // Client settings override server, but preserve server values if client field is empty/undefined
     const updatedSettings: any = { 
-      ...existingSettings, // Giữ lại TẤT CẢ fields cũ
-      ...settings, // Update với fields mới
+      ...existingSettings, // Giữ lại TẤT CẢ fields từ server (DB)
+      ...settings, // Client settings OVERRIDE (priority cao hơn)
     };
+    
+    // BẢO VỆ các fields quan trọng: giữ nguyên nếu client gửi trống
+    const protectedFields = [
+      'paypalClientId',
+      'paypalClientSecret',
+      'telegramBotToken',
+      'telegramChatId',
+      'contactEmail',
+      'contactPhone',
+      'address',
+      'businessHours',
+    ];
+    
+    protectedFields.forEach(field => {
+      // Nếu client gửi field trống (undefined, null, empty string) và server có giá trị
+      if (existingSettings[field] && 
+          (settings[field] === undefined || settings[field] === null || settings[field] === '')) {
+        updatedSettings[field] = existingSettings[field]; // Giữ lại giá trị từ server
+      }
+    });
     
     // Đảm bảo các boolean fields không bị undefined hoặc null
     updatedSettings.paypalEnabled = settings.paypalEnabled !== undefined ? settings.paypalEnabled : (existingSettings.paypalEnabled ?? false);
     updatedSettings.cryptoEnabled = settings.cryptoEnabled !== undefined ? settings.cryptoEnabled : (existingSettings.cryptoEnabled ?? false);
     updatedSettings.autoApproveOrders = settings.autoApproveOrders !== undefined ? settings.autoApproveOrders : (existingSettings.autoApproveOrders ?? false);
     updatedSettings.emailNotifications = settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false);
-    
-    // Đảm bảo các string fields không bị mất nếu đã có giá trị
-    if (existingSettings.paypalClientId && !settings.paypalClientId) {
-      updatedSettings.paypalClientId = existingSettings.paypalClientId; // Giữ lại nếu không có trong settings mới
-    }
-    if (existingSettings.paypalClientSecret && !settings.paypalClientSecret) {
-      updatedSettings.paypalClientSecret = existingSettings.paypalClientSecret; // Giữ lại nếu không có trong settings mới
-    }
-    if (existingSettings.telegramBotToken && !settings.telegramBotToken) {
-      updatedSettings.telegramBotToken = existingSettings.telegramBotToken; // Giữ lại nếu không có trong settings mới
-    }
-    if (existingSettings.telegramChatId && !settings.telegramChatId) {
-      updatedSettings.telegramChatId = existingSettings.telegramChatId; // Giữ lại nếu không có trong settings mới
-    }
 
     await saveSettings(updatedSettings);
     

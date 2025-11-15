@@ -160,6 +160,7 @@ export default function SettingsManagement() {
   }, [initialLoad, isLoading]); // BỎ serverSettings, hasLocalChanges khỏi dependencies - cố ý để tránh reset
 
   // Auto-save function với debounce - ĐẢM BẢO GỬI FULL SETTINGS
+  // Priority: localStorage (client) > server (DB)
   const autoSave = useCallback(async (settingsToSave: AdminSettings) => {
     if (isAutoSavingRef.current) return;
     isAutoSavingRef.current = true;
@@ -169,7 +170,8 @@ export default function SettingsManagement() {
       localStorage.setItem('adminSettings', JSON.stringify(fullSettings));
       localStorage.setItem('settingsLastUpdate', new Date().toISOString());
       
-      // Lưu lên server (và Vercel KV nếu có) - GỬI FULL SETTINGS
+      // Lưu lên server (Vercel KV) - GỬI FULL SETTINGS
+      // Server sẽ merge: client settings (priority) > existing server settings
       const success = await saveSettingsToServer(fullSettings);
       
       if (success) {
