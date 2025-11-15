@@ -36,14 +36,37 @@ export function useSettings() {
             return prev;
           });
           
-          // Luôn lưu vào localStorage để cache (cho PaymentModal và các component khác)
-          // Server (Vercel KV) là source of truth, localStorage là cache
+          // Merge server settings với localStorage để giữ sensitive fields
+          // QUAN TRỌNG: Server KHÔNG BAO GIỜ trả về sensitive fields (do sanitize)
+          // Nên phải merge với localStorage để giữ sensitive fields
           if (typeof window !== 'undefined') {
             const serverTimestamp = data.timestamp || new Date().toISOString();
-            localStorage.setItem('adminSettings', JSON.stringify(data.settings));
+            
+            // Load localStorage hiện tại để merge
+            const currentLocal = localStorage.getItem('adminSettings');
+            let mergedSettings = { ...data.settings };
+            
+            if (currentLocal) {
+              try {
+                const localParsed = JSON.parse(currentLocal);
+                // Merge: server settings + localStorage sensitive fields
+                mergedSettings = {
+                  ...data.settings, // Server settings (không có sensitive fields)
+                  ...localParsed, // localStorage OVERRIDE (có sensitive fields) - priority cao nhất
+                  // Đảm bảo sensitive fields từ localStorage được giữ lại
+                  paypalClientSecret: localParsed.paypalClientSecret || undefined,
+                  telegramBotToken: localParsed.telegramBotToken || undefined,
+                };
+              } catch (e) {
+                console.error('Error parsing localStorage for merge:', e);
+              }
+            }
+            
+            // Lưu merged settings vào localStorage
+            localStorage.setItem('adminSettings', JSON.stringify(mergedSettings));
             localStorage.setItem('settingsLastUpdate', serverTimestamp);
             // Dispatch event để PaymentModal biết settings đã update
-            window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data.settings }));
+            window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: mergedSettings }));
           }
           
           return true;
