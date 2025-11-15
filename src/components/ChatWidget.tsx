@@ -152,7 +152,7 @@ export default function ChatWidget() {
     }
 
     // Auto-reply (optional)
-    setTimeout(() => {
+    setTimeout(async () => {
       const autoReply: Message = {
         id: `msg-${Date.now()}-reply`,
         visitorId: visitorId,

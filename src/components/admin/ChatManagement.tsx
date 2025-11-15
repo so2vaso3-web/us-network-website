@@ -83,7 +83,8 @@ export default function ChatManagement() {
       }
       
       if (messages.length > 0) {
-        setAllMessages(messages);
+        try {
+          setAllMessages(messages);
 
           // Group messages by visitorId
           const conversationMap = new Map<string, Conversation>();

@@ -148,6 +148,7 @@ export default function SettingsManagement() {
       };
       
       autoRestore();
+    }
     // KHÔNG tự động merge từ server nữa - chỉ dùng khi initial load
     // Để tránh server polling overwrite user input
   }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
