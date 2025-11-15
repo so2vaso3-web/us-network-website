@@ -25,11 +25,54 @@ export default function SettingsManagement() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
-    if (serverSettings && initialLoad) {
-      // Chỉ load từ server lần đầu
-      setSettings(serverSettings);
-      setInitialLoad(false);
-      setHasLocalChanges(false);
+    if (initialLoad) {
+      // Tự động restore từ localStorage nếu server settings rỗng
+      const autoRestore = async () => {
+        try {
+          // Kiểm tra server settings có data không
+          const hasServerData = serverSettings && Object.keys(serverSettings).length > 0 && 
+            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.telegramBotToken);
+          
+          // Nếu server không có data nhưng localStorage có
+          if (!hasServerData && typeof window !== 'undefined') {
+            const localSettings = localStorage.getItem('adminSettings');
+            if (localSettings) {
+              try {
+                const parsed = JSON.parse(localSettings);
+                // Kiểm tra localStorage có data thực sự không
+                const hasLocalData = parsed && (parsed.websiteName || parsed.paypalClientId || parsed.telegramBotToken);
+                
+                if (hasLocalData) {
+                  console.log('🔄 Tự động restore settings từ localStorage...');
+                  // Restore lên server
+                  const success = await saveSettingsToServer(parsed);
+                  if (success) {
+                    console.log('✅ Đã tự động restore settings lên server!');
+                    // Reload để lấy settings mới từ server
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 500);
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.error('Error parsing localStorage:', e);
+              }
+            }
+          }
+          
+          // Load từ server settings
+          if (serverSettings) {
+            setSettings(serverSettings);
+            setInitialLoad(false);
+            setHasLocalChanges(false);
+          }
+        } catch (error) {
+          console.error('Error in auto restore:', error);
+        }
+      };
+      
+      autoRestore();
     } else if (serverSettings && !hasLocalChanges && !initialLoad) {
       // Chỉ update từ server nếu không có thay đổi local
       setSettings(serverSettings);
