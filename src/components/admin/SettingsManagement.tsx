@@ -115,6 +115,7 @@ export default function SettingsManagement() {
             } as AdminSettings;
           } else if (hasServerData && localSettingsData) {
             // Nếu cả 2 đều có, merge: localStorage (priority) > server
+            // QUAN TRỌNG: Bảo vệ sensitive fields từ localStorage (vì server không trả về do sanitize)
             const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
               ? localSettingsData.paypalMode 
               : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
@@ -125,10 +126,15 @@ export default function SettingsManagement() {
               : ((serverSettings?.cryptoGateway === 'manual' || serverSettings?.cryptoGateway === 'bitpay') 
                   ? serverSettings.cryptoGateway 
                   : 'manual');
+            
+            // Merge với priority: localStorage sensitive fields > server > localStorage other fields
             mergedSettings = { 
               ...defaultSettings, 
-              ...serverSettings, 
-              ...localSettingsData,
+              ...serverSettings, // Server settings (không có sensitive fields do sanitize)
+              ...localSettingsData, // localStorage OVERRIDE (có sensitive fields) - priority cao nhất
+              // Đảm bảo sensitive fields từ localStorage được giữ lại
+              paypalClientSecret: localSettingsData.paypalClientSecret || serverSettings?.paypalClientSecret,
+              telegramBotToken: localSettingsData.telegramBotToken || serverSettings?.telegramBotToken,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             } as AdminSettings;
@@ -229,11 +235,16 @@ export default function SettingsManagement() {
       
       // Đảm bảo các fields quan trọng KHÔNG BỊ MẤT
       // Chỉ update nếu updates có giá trị rõ ràng (không phải undefined, null, hoặc empty string khi đang có giá trị)
+      // QUAN TRỌNG: Bảo vệ các sensitive fields khỏi bị overwrite bởi empty values
       if (prev.paypalClientId && (updates.paypalClientId === undefined || updates.paypalClientId === null || updates.paypalClientId === '')) {
         newSettings.paypalClientId = prev.paypalClientId;
       }
-      if (prev.paypalClientSecret && (updates.paypalClientSecret === undefined || updates.paypalClientSecret === null || updates.paypalClientSecret === '')) {
-        newSettings.paypalClientSecret = prev.paypalClientSecret;
+      // Bảo vệ paypalClientSecret - KHÔNG BAO GIỜ bị overwrite bởi empty/undefined
+      if (prev.paypalClientSecret) {
+        // Nếu updates không có paypalClientSecret hoặc là empty, giữ nguyên giá trị cũ
+        if (updates.paypalClientSecret === undefined || updates.paypalClientSecret === null || updates.paypalClientSecret === '') {
+          newSettings.paypalClientSecret = prev.paypalClientSecret;
+        }
       }
       if (prev.telegramBotToken && (updates.telegramBotToken === undefined || updates.telegramBotToken === null || updates.telegramBotToken === '')) {
         newSettings.telegramBotToken = prev.telegramBotToken;
