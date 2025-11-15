@@ -10,9 +10,16 @@ export default function PackageManagement() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
-  const loadPackages = async () => {
+  const loadPackages = async (force = false) => {
+    // Không load từ server nếu đang có local changes trừ khi force
+    if (hasLocalChanges && !force) {
+      return;
+    }
+
     if (typeof window !== 'undefined') {
       try {
         // Ưu tiên load từ server
@@ -29,6 +36,8 @@ export default function PackageManagement() {
           if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
             setPackages(data.packages);
             localStorage.setItem('packages', JSON.stringify(data.packages));
+            setInitialLoad(false);
+            setHasLocalChanges(false);
             return;
           }
         }
@@ -36,42 +45,51 @@ export default function PackageManagement() {
         console.error('Error loading packages from server:', error);
       }
 
-      // Fallback: thử load từ localStorage
-      const saved = localStorage.getItem('packages');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setPackages(parsed);
-            return;
+      // Fallback: thử load từ localStorage (chỉ lần đầu)
+      if (initialLoad) {
+        const saved = localStorage.getItem('packages');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setPackages(parsed);
+              setInitialLoad(false);
+              setHasLocalChanges(false);
+              return;
+            }
+          } catch (e) {
+            console.error('Error loading packages from localStorage:', e);
           }
-        } catch (e) {
-          console.error('Error loading packages from localStorage:', e);
         }
-      }
 
-      // Cuối cùng: dùng default packages
-      setPackages(defaultPackages);
-      localStorage.setItem('packages', JSON.stringify(defaultPackages));
+        // Cuối cùng: dùng default packages
+        setPackages(defaultPackages);
+        localStorage.setItem('packages', JSON.stringify(defaultPackages));
+        setInitialLoad(false);
+        setHasLocalChanges(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadPackages();
+    loadPackages(true); // Force load lần đầu
     
-    // Lắng nghe event khi packages được cập nhật từ nơi khác
+    // Lắng nghe event khi packages được cập nhật từ nơi khác (chỉ khi không có local changes)
     const handlePackagesUpdated = () => {
-      loadPackages();
+      if (!hasLocalChanges && !showForm) {
+        loadPackages(true); // Force reload khi không có local changes
+      }
     };
     window.addEventListener('packagesUpdated', handlePackagesUpdated);
     
     return () => {
       window.removeEventListener('packagesUpdated', handlePackagesUpdated);
     };
-  }, []);
+  }, []); // Chỉ chạy 1 lần khi mount
 
   const savePackages = async (updatedPackages: Package[]) => {
     setPackages(updatedPackages);
+    setHasLocalChanges(false); // Reset local changes vì đang save
     
     // Lưu vào localStorage làm cache tạm thời
     localStorage.setItem('packages', JSON.stringify(updatedPackages));
@@ -81,6 +99,10 @@ export default function PackageManagement() {
     
     if (success) {
       setToast({ message: 'Đã lưu gói cước thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.', type: 'success' });
+      // Reload sau 1 giây để sync với server
+      setTimeout(() => {
+        loadPackages(true);
+      }, 1000);
     } else {
       setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
       // Vẫn dispatch event để cập nhật trong tab hiện tại
@@ -100,6 +122,7 @@ export default function PackageManagement() {
   const handleEdit = (pkg: Package) => {
     setEditingPackage({ ...pkg });
     setShowForm(true);
+    setHasLocalChanges(true); // Mark có local changes khi đang edit
     // Scroll to top để thấy form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -118,6 +141,7 @@ export default function PackageManagement() {
       badge: undefined,
     });
     setShowForm(true);
+    setHasLocalChanges(true); // Mark có local changes khi đang thêm mới
     // Scroll to top để thấy form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
