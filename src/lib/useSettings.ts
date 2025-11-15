@@ -162,15 +162,22 @@ export async function saveSettingsToServer(settings: AdminSettings, localStorage
       } else {
         const errorMsg = data.error || 'Unknown error';
         console.error('Save failed:', errorMsg);
-        // Check if it's a KV configuration error
-        if (errorMsg.includes('Vercel KV not configured')) {
+        console.error('Error details:', data.details);
+        
+        // Check error type and log helpful message
+        if (errorMsg.includes('Redis connection failed')) {
+          console.error('❌ Redis connection error. Check REDIS_URL in Vercel environment variables.');
+        } else if (errorMsg.includes('Vercel KV not configured')) {
           console.warn('⚠️ Vercel KV not configured. Settings saved to localStorage only.');
           console.warn('   For production, configure KV_REST_API_URL and KV_REST_API_TOKEN in Vercel.');
+        } else if (errorMsg.includes('No Redis/KV configured')) {
+          console.error('❌ No Redis/KV configured. Connect Redis database in Vercel Storage.');
         }
       }
     } else {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Save failed with status:', response.status, errorText);
+      console.error('Save failed with status:', response.status);
+      console.error('Error response:', errorText);
     }
     return false;
   } catch (error) {

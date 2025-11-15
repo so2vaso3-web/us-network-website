@@ -184,15 +184,16 @@ export default function SettingsManagement() {
         setToast(null);
       } else {
         console.error('Auto-save failed, but localStorage is saved');
-        // Only show warning if it's not a development/local issue
-        if (process.env.NODE_ENV === 'production') {
+        // Show warning in production or when not in local dev
+        const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+        if (!isLocalDev) {
           setToast({ 
-            message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', 
+            message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối Redis.', 
             type: 'warning' 
           });
         } else {
-          // In development, just log - might be missing KV config
-          console.warn('Settings saved to localStorage only. Configure Vercel KV for persistent storage.');
+          // In local dev, just log
+          console.warn('Settings saved to localStorage only. Configure Redis for persistent storage.');
         }
       }
     } catch (error) {
@@ -308,7 +309,7 @@ export default function SettingsManagement() {
         // Update local state với settings đã save để đảm bảo đồng bộ
         setSettings(settingsToSave);
       } else {
-        setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
+        setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối Redis.', type: 'warning' });
         // Vẫn dispatch event để cập nhật trong tab hiện tại
         notifySettingsUpdated();
       }

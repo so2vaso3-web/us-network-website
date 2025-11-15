@@ -175,10 +175,21 @@ export async function POST(request: NextRequest) {
       message: 'Settings saved successfully',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /api/settings:', error);
+    const errorMessage = error?.message || 'Failed to save settings';
+    
+    // Return detailed error for debugging
     return NextResponse.json(
-      { success: false, error: 'Failed to save settings' },
+      { 
+        success: false, 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? {
+          hasRedisUrl: !!process.env.REDIS_URL,
+          hasKvUrl: !!process.env.KV_REST_API_URL,
+          hasKvToken: !!process.env.KV_REST_API_TOKEN,
+        } : undefined
+      },
       { status: 500 }
     );
   }

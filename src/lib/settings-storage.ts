@@ -42,11 +42,9 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
           }
         });
         
-        if (!client.isOpen) {
-          await client.connect();
-        }
-        
+        await client.connect();
         const redisSettings = await client.get(STORAGE_KEY);
+        await client.quit();
         
         if (redisSettings) {
           const parsed = JSON.parse(redisSettings);
@@ -54,9 +52,17 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
         }
       } catch (e) {
         console.error('Error loading from Redis:', e);
+        // Try to cleanup
+        if (client) {
+          try {
+            if (client.isOpen) {
+              await client.quit();
+            }
+          } catch (quitError) {
+            // Ignore
+          }
+        }
         // Fall through to safe fallback
-      } finally {
-        // Don't quit - connection will be reused or closed by serverless function cleanup
       }
     }
     
@@ -119,25 +125,23 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
           }
         });
         
-        // Connect only if not already connected
-        if (!client.isOpen) {
-          await client.connect();
-        }
-        
+        await client.connect();
         await client.set(STORAGE_KEY, JSON.stringify(encryptedSettings));
         console.log('✅ Settings saved to Redis (persistent, encrypted)');
         
-        // Don't quit - keep connection alive for next request
-        // Only quit if we're sure we won't need it again soon
+        // Close connection (serverless best practice)
+        await client.quit();
         return;
       } catch (e: any) {
         console.error('❌ Error saving settings to Redis:', e?.message || e);
-        console.error('Redis URL:', process.env.REDIS_URL ? 'Set (format: redis://...)' : 'Not set');
+        console.error('Redis URL:', process.env.REDIS_URL ? `Set (${process.env.REDIS_URL.substring(0, 20)}...)` : 'Not set');
         
         // Try to cleanup if client exists
-        if (client && client.isOpen) {
+        if (client) {
           try {
-            await client.quit();
+            if (client.isOpen) {
+              await client.quit();
+            }
           } catch (quitError) {
             // Ignore quit errors
           }
