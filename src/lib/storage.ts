@@ -11,6 +11,10 @@ const memoryStorage: Record<string, any> = {};
 // Check if running on Vercel/serverless
 const isVercel = process.env.VERCEL === '1';
 const isServerless = !process.env.NODE_ENV || process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// Flag để chỉ log warning một lần
+let kvWarningLogged = false;
 
 export interface StorageAdapter {
   get(key: string): any | null | Promise<any | null>;
@@ -90,13 +94,25 @@ class VercelKVAdapter implements StorageAdapter {
       // Kiểm tra xem có KV_REST_API_URL không (Vercel tự động set)
       if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
         this.kv = kvModule;
-        console.log('✅ Vercel KV initialized');
+        if (isDevelopment) {
+          console.log('✅ Vercel KV initialized');
+        }
       } else {
         this.kv = null;
-        console.warn('⚠️ Vercel KV not configured (missing KV_REST_API_URL or KV_REST_API_TOKEN)');
+        // Chỉ log warning một lần và chỉ trong development hoặc khi thực sự cần
+        if (!kvWarningLogged && (isDevelopment || isVercel)) {
+          console.warn('⚠️ Vercel KV not configured (missing KV_REST_API_URL or KV_REST_API_TOKEN)');
+          console.warn('   → Using in-memory storage. Data will be lost on server restart.');
+          console.warn('   → To enable persistent storage, setup Vercel KV: https://vercel.com/docs/storage/vercel-kv');
+          kvWarningLogged = true;
+        }
       }
     } catch (error) {
-      console.warn('Vercel KV not available, falling back to memory storage');
+      // Chỉ log warning một lần
+      if (!kvWarningLogged && (isDevelopment || isVercel)) {
+        console.warn('⚠️ Vercel KV not available, falling back to memory storage');
+        kvWarningLogged = true;
+      }
       this.kv = null;
     }
   }
@@ -160,7 +176,14 @@ class MemoryAdapter implements StorageAdapter {
 
   set(key: string, value: any): void {
     memoryStorage[key] = value;
-    console.warn(`⚠️ Using in-memory storage for ${key}. Data will be lost on server restart!`);
+    // Chỉ log warning một lần cho mỗi key
+    if (isDevelopment && !memoryStorage._warnedKeys?.includes(key)) {
+      console.warn(`⚠️ Using in-memory storage for ${key}. Data will be lost on server restart!`);
+      if (!memoryStorage._warnedKeys) {
+        memoryStorage._warnedKeys = [];
+      }
+      memoryStorage._warnedKeys.push(key);
+    }
   }
 
   exists(key: string): boolean {
@@ -205,7 +228,11 @@ function getAdapter(): StorageAdapter {
         return kvAdapter;
       }
     } catch (error) {
-      console.warn('Vercel KV not configured, falling back to memory storage');
+      // Chỉ log warning một lần
+      if (!kvWarningLogged && (isDevelopment || isVercel)) {
+        console.warn('⚠️ Vercel KV not configured, falling back to memory storage');
+        kvWarningLogged = true;
+      }
     }
     // Fallback: dùng memory storage
     return new MemoryAdapter();
