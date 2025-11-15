@@ -390,24 +390,42 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Chat Button - Fixed Bottom Right */}
+      {/* Chat Button - Fixed Bottom Right with Beautiful Icon and Animations */}
       <button
         onClick={() => {
           setIsOpen(true);
           setIsMinimized(false);
         }}
-        className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-110 flex items-center justify-center ${isOpen ? 'hidden' : 'flex'}`}
+        className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-110 flex items-center justify-center group chat-button-pulse ${isOpen ? 'hidden' : 'flex'}`}
         aria-label="Open chat"
       >
-        <i className="fas fa-comments text-white text-xl sm:text-2xl"></i>
+        {/* Animated Ripple Effect */}
+        <span className="absolute inset-0 rounded-full bg-white/20 animate-ping opacity-75"></span>
+        <span className="absolute inset-0 rounded-full bg-white/10 animate-pulse"></span>
+        
+        {/* Beautiful Chat Icon SVG */}
+        <svg
+          className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10 transition-transform duration-300 group-hover:scale-110"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 24 24"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          <path d="M8 10h.01M12 10h.01M16 10h.01" strokeWidth="2.5" />
+        </svg>
+        
+        {/* Unread Badge */}
         {(() => {
           if (typeof window !== 'undefined' && visitorId) {
             const allMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
             const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId && !m.read && !m.isAdmin);
             if (visitorMessages.length > 0) {
               return (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  {visitorMessages.length}
+                <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg animate-bounce border-2 border-white">
+                  {visitorMessages.length > 9 ? '9+' : visitorMessages.length}
                 </span>
               );
             }
@@ -419,7 +437,7 @@ export default function ChatWidget() {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 bg-[#1a1f3a] rounded-lg sm:rounded-xl border border-gray-700 shadow-2xl flex flex-col transition-all duration-300 ${
+          className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 bg-[#1a1f3a] rounded-lg sm:rounded-xl border border-gray-700 shadow-2xl flex flex-col transition-all duration-300 animate-slideInRight ${
             isMinimized ? 'w-80 h-12' : 'w-80 sm:w-96 h-[500px] sm:h-[600px]'
           }`}
         >
@@ -455,21 +473,34 @@ export default function ChatWidget() {
           {!isMinimized && (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-900/50">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-900/50 scroll-smooth">
                 {messages.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <i className="fas fa-comments text-4xl mb-3 opacity-50"></i>
+                  <div className="text-center py-8 text-gray-400 animate-fadeIn">
+                    <svg
+                      className="w-16 h-16 mx-auto mb-3 opacity-50"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                      />
+                    </svg>
                     <p className="text-sm">No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
                   <>
-                    {messages.map((msg) => (
+                    {messages.map((msg, index) => (
                       <div
                         key={msg.id}
-                        className={`flex ${msg.isAdmin ? 'justify-start' : 'justify-end'}`}
+                        className={`flex ${msg.isAdmin ? 'justify-start' : 'justify-end'} animate-fadeIn`}
+                        style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         <div
-                          className={`max-w-[75%] rounded-lg p-3 ${
+                          className={`max-w-[75%] rounded-lg p-3 transition-all duration-200 hover:scale-[1.02] ${
                             msg.isAdmin
                               ? 'bg-gray-700 text-white'
                               : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
@@ -529,11 +560,23 @@ export default function ChatWidget() {
                     disabled={!message.trim()}
                     className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
                       message.trim()
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 hover:scale-105 active:scale-95'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed'
                     }`}
+                    aria-label="Send message"
                   >
-                    <i className="fas fa-paper-plane"></i>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      viewBox="0 0 24 24"
+                    >
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
                   </button>
                 </div>
               </div>
