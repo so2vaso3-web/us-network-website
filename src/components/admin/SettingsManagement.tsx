@@ -170,9 +170,13 @@ export default function SettingsManagement() {
       localStorage.setItem('adminSettings', JSON.stringify(fullSettings));
       localStorage.setItem('settingsLastUpdate', new Date().toISOString());
       
-      // Lưu lên server (Vercel KV) - GỬI FULL SETTINGS
-      // Server sẽ merge: client settings (priority) > existing server settings
-      const success = await saveSettingsToServer(fullSettings);
+      // Lưu lên server (Vercel KV) - GỬI FULL SETTINGS + localStorage data
+      // Server sẽ merge: localStorage (highest) > client settings > existing server settings
+      const localStorageData = typeof window !== 'undefined' 
+        ? JSON.parse(localStorage.getItem('adminSettings') || '{}')
+        : {};
+      
+      const success = await saveSettingsToServer(fullSettings, localStorageData);
       
       if (success) {
         setHasLocalChanges(false);

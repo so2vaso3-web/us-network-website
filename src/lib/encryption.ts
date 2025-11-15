@@ -22,15 +22,19 @@ function getEncryptionKey(): Buffer {
     return Buffer.from('default-master-key-32-chars-long!!', 'utf-8');
   }
   
+  // If MASTER_KEY is hex (64 chars = 32 bytes), decode it
+  if (masterKey.length === 64 && /^[0-9a-fA-F]+$/.test(masterKey)) {
+    return Buffer.from(masterKey, 'hex');
+  }
+  
   // Use first 32 bytes of MASTER_KEY (or hash if longer)
   if (masterKey.length >= KEY_LENGTH) {
     return Buffer.from(masterKey.substring(0, KEY_LENGTH), 'utf-8');
   }
   
-  // If shorter, pad with zeros (not ideal but works)
-  const key = Buffer.alloc(KEY_LENGTH);
-  Buffer.from(masterKey, 'utf-8').copy(key);
-  return key;
+  // If shorter, use crypto to derive key
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(masterKey).digest().subarray(0, KEY_LENGTH);
 }
 
 /**

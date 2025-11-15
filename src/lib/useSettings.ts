@@ -127,7 +127,7 @@ export function useSettings() {
  * Lưu settings lên server (Vercel KV)
  * Priority: localStorage (client) > server (DB)
  */
-export async function saveSettingsToServer(settings: AdminSettings): Promise<boolean> {
+export async function saveSettingsToServer(settings: AdminSettings, localStorageData?: Partial<AdminSettings>): Promise<boolean> {
   try {
     // Đảm bảo gửi FULL settings object, không thiếu field nào
     const fullSettings = { ...settings };
@@ -141,7 +141,10 @@ export async function saveSettingsToServer(settings: AdminSettings): Promise<boo
         'Pragma': 'no-cache',
         'Expires': '0',
       },
-      body: JSON.stringify({ settings: fullSettings }), // GỬI FULL SETTINGS từ client
+      body: JSON.stringify({ 
+        settings: fullSettings, // Client settings
+        localStorageData: localStorageData || {}, // localStorage data (highest priority)
+      }),
       cache: 'no-store',
     });
 

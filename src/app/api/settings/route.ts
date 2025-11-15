@@ -1,81 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { encryptSettings, decryptSettings } from '@/lib/encryption';
+import { mergeSettings, sanitizeSettingsForClient } from '@/lib/settings-merge';
+import { readSettingsFromKV, saveSettingsToKV } from '@/lib/settings-storage';
 
 const STORAGE_KEY = 'adminSettings';
 
+// Force dynamic rendering (uses request headers, rate limiting)
+export const dynamic = 'force-dynamic';
+
 /**
- * Read settings from Vercel KV only (no filesystem)
- * Returns safe fallback if DB fails
+ * Basic auth check for admin endpoints
+ * In production, use proper session/auth middleware
  */
-async function readSettingsFromKV(): Promise<any> {
-  try {
-    // CHỈ dùng Vercel KV, không dùng filesystem
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      try {
-        const { kv } = require('@vercel/kv');
-        const kvSettings = await kv.get(STORAGE_KEY);
-        if (kvSettings && typeof kvSettings === 'object') {
-          // Decrypt sensitive fields before returning
-          return decryptSettings(kvSettings);
-        }
-      } catch (e) {
-        console.error('Error loading from Vercel KV:', e);
-        // Fall through to safe fallback
-      }
-    }
-  } catch (error) {
-    console.error('Error reading settings:', error);
+function isAdmin(request: NextRequest): boolean {
+  // For now, check for admin session or API key
+  // TODO: Implement proper auth middleware
+  const authHeader = request.headers.get('authorization');
+  const apiKey = request.headers.get('x-api-key');
+  
+  // In development, allow all (for testing)
+  if (process.env.NODE_ENV === 'development') {
+    return true;
   }
   
-  // Safe fallback - return minimal safe defaults
-  return {
-    paypalEnabled: false,
-    cryptoEnabled: false,
-    websiteName: 'US Mobile Networks',
-    paypalMode: 'sandbox',
-    cryptoGateway: 'manual',
-  };
+  // Check for admin session cookie or API key
+  const sessionCookie = request.cookies.get('admin_session');
+  if (sessionCookie?.value === 'authenticated') {
+    return true;
+  }
+  
+  if (apiKey === process.env.ADMIN_API_KEY) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Simple rate limiting (in-memory, for production use Redis)
+ */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // 10 requests per minute
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
 }
 
 async function readSettings(): Promise<any> {
   return await readSettingsFromKV();
 }
 
-/**
- * Save settings to Vercel KV only (no filesystem)
- * Encrypts sensitive fields before saving
- */
 async function saveSettings(settings: any): Promise<void> {
-  // Encrypt sensitive fields before saving
-  const encryptedSettings = encryptSettings(settings);
-  
-  try {
-    // CHỈ lưu lên Vercel KV, không dùng filesystem
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      try {
-        const { kv } = require('@vercel/kv');
-        await kv.set(STORAGE_KEY, encryptedSettings);
-        console.log('✅ Settings saved to Vercel KV (persistent, encrypted)');
-        return;
-      } catch (e) {
-        console.error('❌ Error saving settings to KV:', e);
-        throw e; // Throw để caller biết có lỗi
-      }
-    } else {
-      throw new Error('Vercel KV not configured. Please set KV_REST_API_URL and KV_REST_API_TOKEN');
-    }
-  } catch (error) {
-    console.error('Error saving settings:', error);
-    throw error;
-  }
+  return await saveSettingsToKV(settings, encryptSettings);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const settings = await readSettings();
+    
+    // Sanitize: remove encrypted secrets, add flags
+    const sanitized = sanitizeSettingsForClient(settings);
+    
     return NextResponse.json({ 
       success: true, 
-      settings,
+      settings: sanitized,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -98,8 +100,25 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { success: false, error: 'Rate limit exceeded' },
+        { status: 429 }
+      );
+    }
+    
+    // Auth check (admin only)
+    if (!isAdmin(request)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     const body = await request.json();
-    const { settings } = body;
+    const { settings, localStorageData } = body;
 
     if (!settings || typeof settings !== 'object') {
       return NextResponse.json(
@@ -108,43 +127,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Merge with existing settings - ĐẢM BẢO KHÔNG MẤT BẤT KỲ FIELD NÀO
-    const existingSettings = await readSettings();
+    // Read existing settings from DB
+    const serverSettings = await readSettings();
     
-    // MERGE LOGIC: localStorage (client) > server (DB)
-    // Client settings override server, but preserve server values if client field is empty/undefined
-    const updatedSettings: any = { 
-      ...existingSettings, // Giữ lại TẤT CẢ fields từ server (DB)
-      ...settings, // Client settings OVERRIDE (priority cao hơn)
-    };
-    
-    // BẢO VỆ các fields quan trọng: giữ nguyên nếu client gửi trống
-    const protectedFields = [
-      'paypalClientId',
-      'paypalClientSecret',
-      'telegramBotToken',
-      'telegramChatId',
-      'contactEmail',
-      'contactPhone',
-      'address',
-      'businessHours',
-    ];
-    
-    protectedFields.forEach(field => {
-      // Nếu client gửi field trống (undefined, null, empty string) và server có giá trị
-      if (existingSettings[field] && 
-          (settings[field] === undefined || settings[field] === null || settings[field] === '')) {
-        updatedSettings[field] = existingSettings[field]; // Giữ lại giá trị từ server
-      }
+    // MERGE LOGIC: localStorage (client) > incoming payload > server (DB)
+    // Step 1: Start with server settings (lowest priority)
+    // Step 2: Apply incoming payload
+    // Step 3: Apply localStorage data (highest priority - user's unsaved changes)
+    let mergedSettings = mergeSettings({
+      serverSettings,
+      clientPayload: settings,
     });
     
-    // Đảm bảo các boolean fields không bị undefined hoặc null
-    updatedSettings.paypalEnabled = settings.paypalEnabled !== undefined ? settings.paypalEnabled : (existingSettings.paypalEnabled ?? false);
-    updatedSettings.cryptoEnabled = settings.cryptoEnabled !== undefined ? settings.cryptoEnabled : (existingSettings.cryptoEnabled ?? false);
-    updatedSettings.autoApproveOrders = settings.autoApproveOrders !== undefined ? settings.autoApproveOrders : (existingSettings.autoApproveOrders ?? false);
-    updatedSettings.emailNotifications = settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false);
-
-    await saveSettings(updatedSettings);
+    // If localStorage data provided, merge it with highest priority
+    if (localStorageData && typeof localStorageData === 'object') {
+      mergedSettings = mergeSettings({
+        serverSettings: mergedSettings,
+        clientPayload: localStorageData,
+      });
+    }
+    
+    // Add metadata
+    mergedSettings.updated_at = new Date().toISOString();
+    mergedSettings.updated_by = 'admin'; // TODO: Get from auth session
+    
+    // Encrypt and save
+    await saveSettings(mergedSettings);
+    
+    // Trigger revalidation for SSG/ISR pages
+    try {
+      // Note: This requires Next.js 13+ with on-demand revalidation
+      // For now, we'll just log - implement revalidate in your deployment
+      if (process.env.VERCEL) {
+        // Vercel on-demand revalidation
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/revalidate?path=/payment&secret=${process.env.REVALIDATE_SECRET || 'secret'}`, {
+          method: 'POST',
+        }).catch(() => {
+          // Ignore revalidation errors
+        });
+      }
+    } catch (revalidateError) {
+      console.warn('Revalidation failed (non-critical):', revalidateError);
+    }
     
     return NextResponse.json({ 
       success: true, 
