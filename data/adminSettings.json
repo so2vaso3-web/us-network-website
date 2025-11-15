@@ -1,1 +1,14 @@
-{}
+{
+  "websiteName": "US Mobile Networks",
+  "paypalEnabled": true,
+  "paypalMode": "live",
+  "cryptoEnabled": true,
+  "cryptoGateway": "manual",
+  "defaultLanguage": "en",
+  "autoApproveOrders": false,
+  "emailNotifications": false,
+  "ordersPerPage": 10,
+  "carrierLogos": {},
+  "paypalClientId": "AZ11GH7cca331qLHsMICpXO463cUdLKoDCQdP_cbxb65mMheto4ErP1sHvae_T423yG26eJwVx1D-m1D",
+  "paypalClientSecret": "EFnAmq1I2rbQWibCSKoFrCxkLH7Nx2KDKST4unFDA-N5V7-P3qwT-nllY8XiQqWSHk0Qj3nxOXUupS-F"
+}

@@ -15,10 +15,14 @@ export function usePackages() {
 
   const fetchPackagesFromServer = useCallback(async () => {
     try {
-      const response = await fetch('/api/packages', {
+      // Thêm timestamp để tránh browser cache
+      const response = await fetch(`/api/packages?t=${Date.now()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
         // Không cache để luôn lấy data mới nhất
         cache: 'no-store',
@@ -64,6 +68,7 @@ export function usePackages() {
 
     const loadPackages = async () => {
       setIsLoading(true);
+      // Thêm timestamp để tránh cache
       await fetchPackagesFromServer();
       if (isMounted) {
         setIsLoading(false);
@@ -73,12 +78,12 @@ export function usePackages() {
     // Load packages lần đầu
     loadPackages();
 
-    // Polling: Tự động fetch mỗi 5 giây để cập nhật real-time
+    // Polling: Tự động fetch mỗi 3 giây để cập nhật real-time (giảm từ 5s xuống 3s)
     pollInterval = setInterval(async () => {
       if (isMounted) {
         await fetchPackagesFromServer();
       }
-    }, 5000); // 5 giây
+    }, 3000); // 3 giây
 
     // Lắng nghe event khi admin cập nhật packages (để cập nhật ngay lập tức)
     const handlePackagesUpdated = () => {

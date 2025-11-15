@@ -206,7 +206,7 @@ export default function PlanCard({ pkg, isInCompareList = false, onToggleCompare
               onClick={() => setShowFeaturesModal(false)}
               className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-lg font-semibold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg flex items-center justify-center gap-2"
             >
-              <span>Đóng</span>
+              <span>Close</span>
             </button>
           </div>
         </div>

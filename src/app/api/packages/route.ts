@@ -19,28 +19,88 @@ async function readPackages(): Promise<Package[]> {
         if (packages && Array.isArray(packages) && packages.length > 0) {
           // Update cache
           storage.set(STORAGE_KEY, packages);
-          return packages;
         }
       } catch (e) {
         console.error('Error loading packages from KV:', e);
       }
     }
     
-    if (Array.isArray(packages) && packages.length > 0) {
-      return packages;
+    // Kiểm tra nếu packages trong storage khác với defaultPackages (để tự động sync khi code thay đổi)
+    let shouldUpdate = false;
+    if (!packages || !Array.isArray(packages) || packages.length === 0) {
+      shouldUpdate = true;
+    } else if (packages.length !== defaultPackages.length) {
+      // So sánh số lượng packages, nếu khác thì cần update
+      shouldUpdate = true;
+    } else {
+      // So sánh chi tiết: kiểm tra xem có package nào thay đổi không (dựa vào id và price)
+      const defaultMap = new Map(defaultPackages.map(p => [p.id, p.price]));
+      const storedMap = new Map(packages.map((p: Package) => [p.id, p.price]));
+      
+      for (const [id, price] of defaultMap) {
+        if (storedMap.get(id) !== price) {
+          shouldUpdate = true;
+          break;
+        }
+      }
     }
+    
+    if (shouldUpdate) {
+      console.log('Packages changed in code, updating storage and server...');
+      // Lưu vào storage
+      storage.set(STORAGE_KEY, defaultPackages);
+      
+      // Lưu lên Vercel KV nếu có
+      if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+        try {
+          const { kv } = require('@vercel/kv');
+          await kv.set(STORAGE_KEY, defaultPackages);
+          console.log('Packages saved to Vercel KV');
+        } catch (e) {
+          console.error('Error saving packages to KV:', e);
+        }
+      }
+      
+      return defaultPackages;
+    }
+    
+    return packages || defaultPackages;
   } catch (error) {
     console.error('Error reading packages:', error);
   }
   // Nếu không có data, trả về default và lưu
   storage.set(STORAGE_KEY, defaultPackages);
+  
+  // Lưu lên Vercel KV nếu có
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv } = require('@vercel/kv');
+      await kv.set(STORAGE_KEY, defaultPackages);
+    } catch (e) {
+      console.error('Error saving packages to KV:', e);
+    }
+  }
+  
   return defaultPackages;
 }
 
-// Lưu packages vào storage
-function savePackages(packages: Package[]): void {
+// Lưu packages vào storage và server
+async function savePackages(packages: Package[]): Promise<void> {
   try {
+    // Lưu vào storage (local hoặc file system)
     storage.set(STORAGE_KEY, packages);
+    
+    // Lưu lên Vercel KV nếu có
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      try {
+        const { kv } = require('@vercel/kv');
+        await kv.set(STORAGE_KEY, packages);
+        console.log('Packages saved to Vercel KV');
+      } catch (e) {
+        console.error('Error saving packages to KV:', e);
+        // Không throw error, vì đã lưu vào storage rồi
+      }
+    }
   } catch (error) {
     console.error('Error saving packages:', error);
     throw error;
@@ -88,7 +148,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    savePackages(packages);
+    await savePackages(packages);
     
     return NextResponse.json({ 
       success: true, 
