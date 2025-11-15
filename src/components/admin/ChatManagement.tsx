@@ -289,10 +289,10 @@ export default function ChatManagement() {
     
     setReplyText('');
     
-    // Reload messages sau khi save xong để sync
+    // Reload messages sau khi save xong để sync (delay ngắn hơn để mượt mà hơn)
     setTimeout(() => {
       loadMessages();
-    }, 500);
+    }, 300);
   };
 
   const filteredConversations = conversations.filter(conv => {

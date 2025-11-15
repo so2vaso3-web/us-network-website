@@ -96,13 +96,25 @@ export default function ChatWidget() {
     }
   }, [messages, isOpen, isMinimized]);
 
-  // Polling để nhận reply từ admin - chạy cả khi chat đóng để nhận notification
+  // Polling để nhận reply từ admin - TỐI ƯU để mượt mà và không mất messages
   useEffect(() => {
     if (!visitorId) return;
 
+    let isPolling = false; // Flag để tránh concurrent requests
+    let lastPollTime = 0;
+
     const loadMessagesFromServer = async () => {
+      // Debounce: Chỉ poll nếu đã qua 1.5 giây từ lần poll trước
+      const now = Date.now();
+      if (isPolling || (now - lastPollTime < 1500)) {
+        return;
+      }
+      
+      isPolling = true;
+      lastPollTime = now;
+
       try {
-        const response = await fetch(`/api/chat?t=${Date.now()}`, {
+        const response = await fetch(`/api/chat?t=${now}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -141,18 +153,28 @@ export default function ChatWidget() {
             const visitorMessages = mergedMessages
               .filter((m: Message) => m.visitorId === visitorId)
               .map((m: Message) => {
-                // Đảm bảo logic isAdmin đúng:
-                // - Nếu message có name là 'Admin' hoặc 'Support Team' → isAdmin: true
-                // - Nếu message có name khác → isAdmin: false (khách hàng)
+                // Đảm bảo logic isAdmin đúng
                 const isAdminMessage = m.name === 'Admin' || m.name === 'Support Team';
                 return {
                   ...m,
-                  isAdmin: isAdminMessage ? true : false, // Force correct isAdmin value
+                  isAdmin: isAdminMessage ? true : false,
                 };
-              });
+              })
+              .sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()); // Sort ngay từ đầu
             
-            // Always update messages từ merged data để đảm bảo sync
+            // Update messages một cách mượt mà
             setMessages(prevMessages => {
+              // Chỉ update nếu có thay đổi thực sự
+              if (prevMessages.length === visitorMessages.length) {
+                const hasChanges = prevMessages.some((prev, idx) => {
+                  const curr = visitorMessages[idx];
+                  return !curr || prev.id !== curr.id || prev.message !== curr.message || prev.timestamp !== curr.timestamp;
+                });
+                if (!hasChanges) {
+                  return prevMessages; // Không có thay đổi, giữ nguyên để tránh re-render
+                }
+              }
+              
               // Check if there are new messages (admin replies)
               const currentMessageIds = new Set(prevMessages.map(m => m.id));
               const newMessages = visitorMessages.filter((m: Message) => !currentMessageIds.has(m.id));
@@ -167,20 +189,16 @@ export default function ChatWidget() {
                 }
               }
               
-              // LUÔN update từ merged data để đảm bảo sync đúng
-              // Sort by timestamp để đảm bảo thứ tự đúng
-              const sorted = [...visitorMessages].sort((a, b) => 
-                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-              );
-              
-              return sorted;
+              return visitorMessages; // Đã sort rồi
             });
           }
         } else {
           console.error('Failed to load messages:', response.status, response.statusText);
           // Fallback: Load từ localStorage nếu server fail
           const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-          const visitorMessages = localMessages.filter((m: Message) => m.visitorId === visitorId);
+          const visitorMessages = localMessages
+            .filter((m: Message) => m.visitorId === visitorId)
+            .sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
           if (visitorMessages.length > 0) {
             setMessages(visitorMessages);
           }
@@ -189,10 +207,14 @@ export default function ChatWidget() {
         console.error('Error loading messages from server:', error);
         // Fallback: Load từ localStorage nếu có lỗi
         const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-        const visitorMessages = localMessages.filter((m: Message) => m.visitorId === visitorId);
+        const visitorMessages = localMessages
+          .filter((m: Message) => m.visitorId === visitorId)
+          .sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         if (visitorMessages.length > 0) {
           setMessages(visitorMessages);
         }
+      } finally {
+        isPolling = false;
       }
     };
 
@@ -228,8 +250,10 @@ export default function ChatWidget() {
     allMessages.push(newMessage);
     localStorage.setItem('chatMessages', JSON.stringify(allMessages));
 
-    // Update local state with visitor's messages (optimistic update)
-    const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
+    // Update local state with visitor's messages (optimistic update) - SORT để đảm bảo thứ tự
+    const visitorMessages = allMessages
+      .filter((m: Message) => m.visitorId === visitorId)
+      .sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     setMessages(visitorMessages);
     
     setMessage('');
@@ -329,8 +353,10 @@ export default function ChatWidget() {
         // Mark as sent
         setHasAutoReply(true);
         
-        // Optimistic update - hiển thị ngay
-        const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
+        // Optimistic update - hiển thị ngay (SORT để đảm bảo thứ tự)
+        const visitorMessages = allMessages
+          .filter((m: Message) => m.visitorId === visitorId)
+          .sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         setMessages(visitorMessages);
         
         // Save to server (không block UI)
