@@ -1,33 +1,63 @@
-# US Mobile Networks - Next.js Website
+# US Network Website
 
-## Cách chạy:
+Next.js website for US Mobile Networks with payment integration (PayPal, FPayment), Telegram bot notifications, and admin dashboard.
 
-1. **Mở Command Prompt hoặc PowerShell**
+## 🚀 Quick Start
 
-2. **Di chuyển vào thư mục project:**
-   ```bash
-   cd C:\Users\so2va\us-network-nextjs
-   ```
+### Local Development
+```bash
+npm install
+npm run dev
+```
 
-3. **Cài đặt dependencies (lần đầu tiên):**
-   ```bash
-   npm install
-   ```
+### Generate Master Key
+```bash
+npm run generate-key
+```
 
-4. **Chạy development server:**
-   ```bash
-   npm run dev
-   ```
+## 📦 Deployment
 
-5. **Mở browser:**
-   - Trang chủ: http://localhost:3000
-   - Admin panel: http://localhost:3000/admin
+### Deploy to Vercel
+1. Push code to Git
+2. Import project to Vercel
+3. Add Redis database (Upstash Redis)
+4. Set `MASTER_KEY` environment variable
+5. Deploy!
 
-**Để dừng server:** Nhấn `Ctrl + C` trong Command Prompt
+**See detailed instructions:**
+- Quick guide: `QUICK_DEPLOY.md`
+- Full guide: `DEPLOYMENT.md`
 
----
+## 🔧 Features
 
-## Lưu ý:
+- ✅ PayPal payment integration
+- ✅ FPayment (USDT) integration
+- ✅ Telegram bot notifications
+- ✅ Admin dashboard
+- ✅ Chat widget
+- ✅ Order management
+- ✅ Settings management
+- ✅ Redis/KV storage
 
-- **Nếu lỗi "node is not recognized":** Restart terminal sau khi cài Node.js
-- **Nếu port 3000 đã được sử dụng:** Đổi port bằng cách thêm `-p 3001` vào lệnh: `npm run dev -p 3001`
+## 📝 Environment Variables
+
+See `.env.example` for required environment variables.
+
+## 📚 Documentation
+
+- `DEPLOYMENT.md` - Full deployment guide
+- `QUICK_DEPLOY.md` - Quick deployment steps
+
+## 🛠️ Tech Stack
+
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+- Vercel KV / Redis
+- PayPal SDK
+- FPayment API
+- Telegram Bot API
+
+## 📄 License
+
+Private

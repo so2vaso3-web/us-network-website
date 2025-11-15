@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
 import { loadOrdersFromServer, saveOrdersToServer, updateOrderOnServer } from '@/lib/useOrders';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -12,6 +14,8 @@ export default function OrderManagement() {
   const [sortBy, setSortBy] = useState<'date' | 'price' | 'status'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: () => {}, type: 'warning' as 'info' | 'warning' | 'danger', confirmText: 'Confirm', cancelText: 'Cancel' });
 
   useEffect(() => {
     loadOrders();
@@ -65,26 +69,34 @@ export default function OrderManagement() {
     // Cập nhật lên server
     const success = await updateOrderOnServer(orderId, { status });
     if (success) {
-      alert('Đã cập nhật trạng thái đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.');
+      setAlertModal({ isOpen: true, message: 'Đã cập nhật trạng thái đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.', type: 'success' });
     } else {
-      alert('Đã cập nhật trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
+      setAlertModal({ isOpen: true, message: 'Đã cập nhật trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.', type: 'warning' });
     }
   };
 
   const deleteOrder = async (orderId: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
-      const updated = orders.filter(o => o.orderId !== orderId);
-      setOrders(updated);
-      localStorage.setItem('orders', JSON.stringify(updated));
-      
-      // Cập nhật lên server
-      const success = await saveOrdersToServer(updated);
-      if (success) {
-        alert('Đã xóa đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.');
-      } else {
-        alert('Đã xóa trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
-      }
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: 'Bạn có chắc chắn muốn xóa đơn hàng này?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        const updated = orders.filter(o => o.orderId !== orderId);
+        setOrders(updated);
+        localStorage.setItem('orders', JSON.stringify(updated));
+        
+        // Cập nhật lên server
+        const success = await saveOrdersToServer(updated);
+        if (success) {
+          setAlertModal({ isOpen: true, message: 'Đã xóa đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.', type: 'success' });
+        } else {
+          setAlertModal({ isOpen: true, message: 'Đã xóa trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.', type: 'warning' });
+        }
+      },
+    });
   };
 
   const getStatusText = (status: Order['status']) => {
@@ -98,13 +110,29 @@ export default function OrderManagement() {
 
   const handleBulkAction = async (action: 'complete' | 'cancel' | 'delete') => {
     if (selectedOrders.size === 0) {
-      alert('Vui lòng chọn ít nhất một đơn hàng!');
+      setAlertModal({ isOpen: true, message: 'Vui lòng chọn ít nhất một đơn hàng!', type: 'warning' });
       return;
     }
 
-    if (action === 'delete' && !confirm(`Bạn có chắc chắn muốn xóa ${selectedOrders.size} đơn hàng?`)) {
+    if (action === 'delete') {
+      setConfirmModal({
+        isOpen: true,
+        message: `Bạn có chắc chắn muốn xóa ${selectedOrders.size} đơn hàng?`,
+        type: 'danger',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          performBulkAction(action);
+        },
+      });
       return;
     }
+
+    performBulkAction(action);
+  };
+
+  const performBulkAction = async (action: 'complete' | 'cancel' | 'delete') => {
 
     const updated = orders.filter(order => {
       if (selectedOrders.has(order.orderId)) {
@@ -124,9 +152,9 @@ export default function OrderManagement() {
     // Cập nhật lên server
     const success = await saveOrdersToServer(updated);
     if (success) {
-      alert(`Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} ${selectedOrders.size} đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.`);
+      setAlertModal({ isOpen: true, message: `Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} ${selectedOrders.size} đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.`, type: 'success' });
     } else {
-      alert(`Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} trong cache local, nhưng không thể lưu lên server.`);
+      setAlertModal({ isOpen: true, message: `Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} trong cache local, nhưng không thể lưu lên server.`, type: 'warning' });
     }
     
     setSelectedOrders(new Set());
@@ -159,7 +187,7 @@ export default function OrderManagement() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    alert('Đã xuất file CSV thành công!');
+    setAlertModal({ isOpen: true, message: 'Đã xuất file CSV thành công!', type: 'success' });
   };
 
   const handleToggleSelectAll = () => {
@@ -596,7 +624,7 @@ export default function OrderManagement() {
                     link.download = `invoice_${selectedOrder.orderId}.txt`;
                     link.click();
                     URL.revokeObjectURL(url);
-                    alert('Đã tải hóa đơn thành công!');
+                    setAlertModal({ isOpen: true, message: 'Đã tải hóa đơn thành công!', type: 'success' });
                   }}
                   className="flex-1 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
                 >

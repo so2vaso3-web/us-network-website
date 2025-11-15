@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface Message {
   id: string;
@@ -29,6 +31,8 @@ export default function ChatManagement() {
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'warning' as 'info' | 'success' | 'warning' | 'error' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: () => {}, type: 'danger' as 'info' | 'warning' | 'danger', confirmText: 'Confirm', cancelText: 'Cancel' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -310,37 +314,46 @@ export default function ChatManagement() {
   };
 
   const deleteConversation = async (visitorId: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa toàn bộ cuộc trò chuyện này?')) {
-      const updated = allMessages.filter(msg => msg.visitorId !== visitorId);
-      setAllMessages(updated);
-      localStorage.setItem('chatMessages', JSON.stringify(updated));
+    setConfirmModal({
+      isOpen: true,
+      message: 'Bạn có chắc chắn muốn xóa toàn bộ cuộc trò chuyện này?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        const updated = allMessages.filter(msg => msg.visitorId !== visitorId);
+        setAllMessages(updated);
+        localStorage.setItem('chatMessages', JSON.stringify(updated));
       
-      // Save to server
-      try {
-        await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: updated }),
-        });
-      } catch (error) {
-        console.error('Error saving to server:', error);
-      }
-      
-      if (selectedConversation?.visitorId === visitorId) {
-        setSelectedConversation(null);
-      }
-      loadMessages();
-    }
+        // Save to server
+        try {
+          await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: updated }),
+          });
+        } catch (error) {
+          console.error('Error saving to server:', error);
+        }
+        
+        if (selectedConversation?.visitorId === visitorId) {
+          setSelectedConversation(null);
+        }
+        loadMessages();
+        setAlertModal({ isOpen: true, message: 'Đã xóa cuộc trò chuyện thành công!', type: 'success' });
+      },
+    });
   };
 
   const sendReply = async (conversation: Conversation) => {
     if (!replyText.trim()) {
-      alert('Please enter a reply message!');
+      setAlertModal({ isOpen: true, message: 'Please enter a reply message!', type: 'warning' });
       return;
     }
 
     if (!conversation.visitorId) {
-      alert('Error: Visitor ID not found!');
+      setAlertModal({ isOpen: true, message: 'Error: Visitor ID not found!', type: 'error' });
       return;
     }
 
@@ -414,7 +427,7 @@ export default function ChatManagement() {
     // Reload messages sau khi save xong để sync (delay ngắn hơn để mượt mà hơn)
     setTimeout(() => {
       loadMessages();
-    }, 300);
+    }, 500);
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -664,6 +677,25 @@ export default function ChatManagement() {
           )}
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   );
 }

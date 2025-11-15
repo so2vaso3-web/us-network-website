@@ -37,4 +37,6 @@ next-env.d.ts
 # data files (keep .gitkeep)
 /data/packages.json
 /data/orders.json
+/data/settings.json
+/data/adminSettings.json
 

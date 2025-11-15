@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AdminSettings } from '@/types';
+import AlertModal from '@/components/AlertModal';
 
 export default function SettingsManagement() {
   const [settings, setSettings] = useState<AdminSettings>({
@@ -16,6 +17,7 @@ export default function SettingsManagement() {
     ordersPerPage: 10,
     carrierLogos: {},
   });
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -56,12 +58,12 @@ export default function SettingsManagement() {
         }
       } else {
         console.error('Failed to save settings to server');
-        alert('Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.');
+        setAlertModal({ isOpen: true, message: 'Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.', type: 'error' });
         return;
       }
     } catch (error) {
       console.error('Error saving settings to server:', error);
-      alert('Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.');
+      setAlertModal({ isOpen: true, message: 'Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.', type: 'error' });
       return;
     }
     
@@ -97,7 +99,7 @@ export default function SettingsManagement() {
       }
     }
     
-    alert('Đã lưu cài đặt thành công! Tất cả thiết bị sẽ tự động cập nhật trong vòng 1 giây.');
+    setAlertModal({ isOpen: true, message: 'Đã lưu cài đặt thành công! Tất cả thiết bị sẽ tự động cập nhật trong vòng 1 giây.', type: 'success' });
   };
 
   const handleLogoUpload = (carrier: string, file: File | null) => {
@@ -126,7 +128,7 @@ export default function SettingsManagement() {
       ...settings,
       carrierLogos: updatedLogos,
     });
-    alert(`Đã xóa logo ${carrier}!`);
+    setAlertModal({ isOpen: true, message: `Đã xóa logo ${carrier}!`, type: 'success' });
   };
 
   const carriers = [
@@ -376,11 +378,11 @@ export default function SettingsManagement() {
                 <button
                   onClick={() => {
                     if (!settings.paypalClientId || !settings.paypalClientSecret) {
-                      alert('Vui lòng nhập đầy đủ Client ID và Client Secret!');
+                      setAlertModal({ isOpen: true, message: 'Vui lòng nhập đầy đủ Client ID và Client Secret!', type: 'warning' });
                       return;
                     }
                     const mode = settings.paypalMode === 'live' ? 'production' : 'sandbox';
-                    alert(`Đang test kết nối PayPal...\n\nMode: ${mode}\nClient ID: ${settings.paypalClientId.substring(0, 20)}...\n\nLưu ý: Test thực sự chỉ hoạt động khi thanh toán.`);
+                    setAlertModal({ isOpen: true, message: `Đang test kết nối PayPal...\n\nMode: ${mode}\nClient ID: ${settings.paypalClientId.substring(0, 20)}...\n\nLưu ý: Test thực sự chỉ hoạt động khi thanh toán.`, type: 'info' });
                   }}
                   className="w-full px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
                 >
@@ -616,6 +618,186 @@ export default function SettingsManagement() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+
+        {/* FPayment Settings */}
+        <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+          <h3 className="text-xl font-bold mb-4">
+            <i className="fas fa-credit-card mr-2 text-green-400"></i>
+            Cài Đặt FPayment (USDT)
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <input
+                type="checkbox"
+                id="fpaymentEnabled"
+                checked={settings.fpaymentEnabled || false}
+                onChange={(e) => setSettings({ ...settings, fpaymentEnabled: e.target.checked })}
+                className="w-5 h-5"
+              />
+              <label htmlFor="fpaymentEnabled" className="font-semibold">Kích Hoạt FPayment</label>
+            </div>
+            {settings.fpaymentEnabled && (
+              <>
+                <div>
+                  <label className="block mb-2 font-semibold">Merchant ID *</label>
+                  <input
+                    type="text"
+                    value={settings.fpaymentMerchantId || ''}
+                    onChange={(e) => setSettings({ ...settings, fpaymentMerchantId: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                    placeholder="Nhập Merchant ID từ FPayment"
+                  />
+                  <small className="text-gray-400 text-sm block mt-1">
+                    Merchant ID được cung cấp bởi FPayment khi đăng ký tài khoản.
+                  </small>
+                </div>
+                <div>
+                  <label className="block mb-2 font-semibold">API Key *</label>
+                  <input
+                    type="password"
+                    value={settings.fpaymentApiKey || ''}
+                    onChange={(e) => setSettings({ ...settings, fpaymentApiKey: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                    placeholder="Nhập API Key từ FPayment Dashboard"
+                  />
+                  <small className="text-gray-400 text-sm block mt-1">
+                    Bảo mật: Không chia sẻ API Key với ai. Cần cho xác thực thanh toán.
+                  </small>
+                </div>
+                <div>
+                  <label className="block mb-2 font-semibold">Chế Độ FPayment</label>
+                  <select
+                    value={settings.fpaymentMode || 'sandbox'}
+                    onChange={(e) => setSettings({ ...settings, fpaymentMode: e.target.value as 'sandbox' | 'live' })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
+                  >
+                    <option value="sandbox">Sandbox (Test)</option>
+                    <option value="live">Live (Production)</option>
+                  </select>
+                  <small className="text-gray-400 text-sm block mt-1">
+                    Sandbox: Dùng để test. Live: Dùng cho production.
+                  </small>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <i className="fas fa-info-circle text-green-400"></i>
+                    Hướng Dẫn Cấu Hình FPayment
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-300">
+                    <li>Đăng ký tài khoản tại <a href="https://app.fpayment.net" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">FPayment</a></li>
+                    <li>Lấy Merchant ID và API Key từ Dashboard</li>
+                    <li>Nhập Merchant ID và API Key vào các ô trên</li>
+                    <li>Chọn chế độ Sandbox (test) hoặc Live (production)</li>
+                    <li>Lưu cài đặt và test thanh toán</li>
+                  </ol>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Telegram Bot Settings */}
+        <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+          <h3 className="text-xl font-bold mb-4">
+            <i className="fab fa-telegram mr-2 text-blue-400"></i>
+            Cài Đặt Telegram Bot
+          </h3>
+          <div className="space-y-4">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold mb-2 flex items-center gap-2">
+                <i className="fas fa-info-circle text-blue-400"></i>
+                Hướng Dẫn Cấu Hình Telegram Bot
+              </h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-300">
+                <li>Tạo bot mới bằng cách chat với <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@BotFather</a> trên Telegram</li>
+                <li>Gửi lệnh <span className="font-mono text-blue-400">/newbot</span> và làm theo hướng dẫn</li>
+                <li>Sao chép Bot Token mà BotFather cung cấp (dạng: <span className="font-mono text-gray-400">123456789:ABCdefGHIjklMNOpqrsTUVwxyz</span>)</li>
+                <li>Để lấy Chat ID:
+                  <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                    <li>Chat với bot bạn vừa tạo</li>
+                    <li>Truy cập: <span className="font-mono text-blue-400">https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/getUpdates</span></li>
+                    <li>Tìm <span className="font-mono text-gray-400">&quot;chat&quot;:&#123;&quot;id&quot;:</span> trong kết quả, số sau <span className="font-mono text-gray-400">&quot;id&quot;:</span> chính là Chat ID</li>
+                  </ul>
+                </li>
+                <li>Nhập Bot Token và Chat ID vào các ô bên dưới</li>
+              </ol>
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold">Bot Token *</label>
+              <input
+                type="password"
+                value={settings.telegramBotToken || ''}
+                onChange={(e) => setSettings({ ...settings, telegramBotToken: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+              />
+              <small className="text-gray-400 text-sm block mt-1">
+                Bot Token từ BotFather. Bảo mật: Không chia sẻ token này với ai.
+              </small>
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold">Chat ID *</label>
+              <input
+                type="text"
+                value={settings.telegramChatId || ''}
+                onChange={(e) => setSettings({ ...settings, telegramChatId: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                placeholder="123456789"
+              />
+              <small className="text-gray-400 text-sm block mt-1">
+                Chat ID nơi bot sẽ gửi thông báo. Có thể là ID cá nhân hoặc ID nhóm.
+              </small>
+            </div>
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <h4 className="font-semibold mb-2 flex items-center gap-2">
+                <i className="fas fa-bell text-green-400"></i>
+                Telegram Bot sẽ gửi thông báo khi:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-300">
+                <li>Có đơn hàng mới</li>
+                <li>Có tin nhắn chat mới từ khách hàng</li>
+                <li>Admin trả lời tin nhắn</li>
+              </ul>
+            </div>
+            <button
+              onClick={async () => {
+                if (!settings.telegramBotToken || !settings.telegramChatId) {
+                  setAlertModal({ isOpen: true, message: 'Vui lòng nhập Bot Token và Chat ID trước!', type: 'warning' });
+                  return;
+                }
+                try {
+                  const response = await fetch('/api/telegram', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      name: 'Test',
+                      email: 'test@example.com',
+                      message: '🧪 Đây là tin nhắn test từ Admin Settings. Nếu bạn nhận được tin nhắn này, Telegram Bot đã hoạt động thành công!',
+                      visitorId: 'test-visitor',
+                      isReply: false,
+                    }),
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                    setAlertModal({ isOpen: true, message: '✅ Test thành công! Kiểm tra Telegram của bạn để xem tin nhắn.', type: 'success' });
+                  } else {
+                    const errorMsg = result.error || 'Unknown error';
+                    const debugInfo = result.debug ? `\n\nDebug info:\n- Has Token: ${result.debug.hasToken}\n- Has Chat ID: ${result.debug.hasChatId}\n- Token Length: ${result.debug.tokenLength}\n- Chat ID: ${result.debug.chatId}` : '';
+                    setAlertModal({ isOpen: true, message: `❌ Test thất bại: ${errorMsg}${debugInfo}\n\nLưu ý:\n1. Đảm bảo Bot Token đúng (dạng: 123456789:ABC...)\n2. Đảm bảo Chat ID đúng (số hoặc -số cho nhóm)\n3. Đã gửi /start cho bot\n4. Bot có quyền gửi tin nhắn đến chat này`, type: 'error' });
+                  }
+                } catch (error: any) {
+                  setAlertModal({ isOpen: true, message: `❌ Lỗi kết nối: ${error.message || 'Failed to send test message'}\n\nVui lòng kiểm tra:\n1. Server đang chạy\n2. Console log để xem chi tiết lỗi`, type: 'error' });
+                }
+              }}
+              className="w-full px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <i className="fab fa-telegram"></i>
+              <span>Test Gửi Tin Nhắn Telegram</span>
+            </button>
           </div>
         </div>
 

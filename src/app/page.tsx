@@ -3,6 +3,7 @@
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import IntroBanner from '@/components/IntroBanner';
+import WelcomeBanner from '@/components/WelcomeBanner';
 import TrustBanner from '@/components/TrustBanner';
 import CarrierSection from '@/components/CarrierSection';
 import PlansSection from '@/components/PlansSection';
@@ -18,8 +19,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0e27] text-white">
       <VisitorTracker />
-      {/* TẠM THỜI TẮT INTROBANNER ĐỂ TEST */}
-      {/* <IntroBanner /> */}
+      <WelcomeBanner />
       <TrustBanner />
       <Header />
       <Hero />

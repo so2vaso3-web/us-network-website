@@ -6,8 +6,58 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Best Mobile Plans USA | Cell Phone Plans 2025',
+  title: {
+    default: 'US Mobile Networks - Best Mobile Plans USA | Cell Phone Plans 2025',
+    template: '%s | US Mobile Networks',
+  },
   description: 'Compare and buy the best cell phone plans from Verizon, T-Mobile, AT&T, and more. Affordable unlimited data plans, prepaid options, and 5G coverage.',
+  keywords: ['mobile plans', 'cell phone plans', 'Verizon', 'T-Mobile', 'AT&T', '5G plans', 'unlimited data', 'prepaid plans', 'US mobile networks'],
+  authors: [{ name: 'US Mobile Networks' }],
+  creator: 'US Mobile Networks',
+  publisher: 'US Mobile Networks',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://zenith5g.com'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+    siteName: 'US Mobile Networks',
+    title: 'US Mobile Networks - Best Mobile Plans USA | Cell Phone Plans 2025',
+    description: 'Compare and buy the best cell phone plans from Verizon, T-Mobile, AT&T, and more. Affordable unlimited data plans, prepaid options, and 5G coverage.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'US Mobile Networks - Best Mobile Plans',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'US Mobile Networks - Best Mobile Plans USA',
+    description: 'Compare and buy the best cell phone plans from Verizon, T-Mobile, AT&T, and more.',
+    images: ['/og-image.png'],
+    creator: '@usmobilenetworks',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       {
@@ -44,6 +94,47 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js" async></script>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'US Mobile Networks',
+              url: process.env.NEXT_PUBLIC_BASE_URL || 'https://zenith5g.com',
+              logo: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://zenith5g.com'}/logo.png`,
+              description: 'Compare and buy the best cell phone plans from Verizon, T-Mobile, AT&T, and more.',
+              sameAs: [
+                'https://www.facebook.com/usmobilenetworks',
+                'https://twitter.com/usmobilenetworks',
+              ],
+              contactPoint: {
+                '@type': 'ContactPoint',
+                contactType: 'Customer Service',
+                availableLanguage: ['English'],
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'US Mobile Networks',
+              url: process.env.NEXT_PUBLIC_BASE_URL || 'https://zenith5g.com',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://zenith5g.com'}/search?q={search_term_string}`,
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
       </head>
       <body className={inter.className}>
         {children}

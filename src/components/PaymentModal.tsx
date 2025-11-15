@@ -16,7 +16,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     phone: '',
     notes: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'crypto'>('paypal');
+  const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'crypto' | 'fpayment'>('paypal');
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Chỉ giữ 4 crypto phổ biến nhất: BTC, ETH, USDT, BNB
   const [selectedCrypto, setSelectedCrypto] = useState<'bitcoin' | 'ethereum' | 'usdt' | 'bnb'>('bitcoin');
@@ -28,6 +28,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [successOrder, setSuccessOrder] = useState<any>(null);
   const [hasCryptoAddress, setHasCryptoAddress] = useState(false);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
   const paypalButtonContainerRef = useRef<HTMLDivElement>(null);
   const paypalButtonInstanceRef = useRef<any>(null);
 
@@ -498,6 +499,34 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
             orders.push(order);
             localStorage.setItem('orders', JSON.stringify(orders));
             localStorage.setItem('pendingPayPalOrder', orderId);
+
+            // Send Telegram notification for new PayPal order (non-blocking)
+            fetch('/api/telegram', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: order.customerName || 'Unknown',
+                email: order.customerEmail || 'Not provided',
+                message: `🛒 <b>New PayPal Order</b>
+
+📦 <b>Order ID:</b> ${order.orderId}
+📱 <b>Plan:</b> ${order.planName}
+🏢 <b>Carrier:</b> ${order.carrier}
+💰 <b>Amount:</b> $${order.price}
+💳 <b>Payment:</b> PayPal
+👤 <b>Customer:</b> ${order.customerName || 'N/A'}
+📧 <b>Email:</b> ${order.customerEmail || 'N/A'}
+📞 <b>Phone:</b> ${order.customerPhone || 'N/A'}
+
+⏰ <b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}
+
+⚠️ <b>Status:</b> Pending PayPal payment`,
+                visitorId: `order-${order.orderId}`,
+                isReply: false,
+              }),
+            }).catch(err => console.error('Failed to send Telegram notification:', err));
             
             return actions.order.create({
               purchase_units: [{
@@ -536,6 +565,34 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               updatedOrders[orderIndex].paymentVerified = true;
               updatedOrders[orderIndex].verifiedAt = new Date().toISOString();
               localStorage.setItem('orders', JSON.stringify(updatedOrders));
+
+              // Send Telegram notification for completed PayPal order (non-blocking)
+              const completedOrder = updatedOrders[orderIndex];
+              fetch('/api/telegram', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  name: completedOrder.customerName || 'Unknown',
+                  email: completedOrder.customerEmail || 'Not provided',
+                  message: `✅ <b>PayPal Order Completed</b>
+
+📦 <b>Order ID:</b> ${orderId}
+💳 <b>Transaction ID:</b> ${details.id}
+📱 <b>Plan:</b> ${completedOrder.planName}
+🏢 <b>Carrier:</b> ${completedOrder.carrier}
+💰 <b>Amount:</b> $${completedOrder.price}
+👤 <b>Customer:</b> ${completedOrder.customerName || 'N/A'}
+📧 <b>Email:</b> ${completedOrder.customerEmail || 'N/A'}
+
+⏰ <b>Completed:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}
+
+✅ <b>Status:</b> Payment verified and completed`,
+                  visitorId: `order-${orderId}`,
+                  isReply: false,
+                }),
+              }).catch(err => console.error('Failed to send Telegram notification:', err));
             }
             localStorage.removeItem('pendingPayPalOrder');
             
@@ -690,10 +747,127 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   const handlePayment = async () => {
     // For PayPal, button will handle payment automatically
-    // This function is only for crypto payment
     if (paymentMethod === 'paypal') {
       // PayPal payment is handled by PayPalButton component
       // User should click the PayPal button to complete payment
+      return;
+    }
+
+    // FPayment - Create invoice and redirect
+    if (paymentMethod === 'fpayment') {
+      try {
+        if (typeof window === 'undefined') return;
+        
+        const settings = localStorage.getItem('adminSettings');
+        if (!settings) {
+          alert('Crypto payment settings not configured. Please configure in Admin Settings.');
+          return;
+        }
+
+        const parsed = JSON.parse(settings);
+        if (!parsed.fpaymentEnabled) {
+          alert('Crypto payment is not enabled. Please enable it in Admin Settings.');
+          return;
+        }
+        if (!parsed.fpaymentMerchantId || !parsed.fpaymentApiKey) {
+          alert('Crypto payment is not configured. Please configure Merchant ID and API Key in Admin Settings.\n\nGo to Admin Settings → Crypto Payment Settings to configure.');
+          return;
+        }
+        
+        // Validate that merchant_id and api_key are not empty strings
+        if (!parsed.fpaymentMerchantId.trim() || !parsed.fpaymentApiKey.trim()) {
+          alert('Merchant ID or API Key cannot be empty. Please check Admin Settings.');
+          return;
+        }
+
+        const orderId = `ORD-${Date.now()}`;
+        const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/fpayment/callback` : '';
+        const successUrl = typeof window !== 'undefined' ? `${window.location.origin}/payment/success` : '';
+        const cancelUrl = typeof window !== 'undefined' ? `${window.location.origin}/payment/cancel` : '';
+
+        // Create order first
+        const order = {
+          orderId,
+          planId: pkg.id,
+          planName: pkg.name,
+          carrier: pkg.carrier,
+          price: pkg.price,
+          paymentMethod: 'fpayment',
+          status: 'pending' as const,
+          customerName: customerInfo.name,
+          customerEmail: customerInfo.email,
+          customerPhone: customerInfo.phone,
+          customerNotes: customerInfo.notes,
+          name: customerInfo.name,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+          notes: customerInfo.notes,
+          createdAt: new Date().toISOString(),
+        };
+
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        orders.push(order);
+        localStorage.setItem('orders', JSON.stringify(orders));
+
+        // Send Telegram notification for new FPayment order (non-blocking)
+        fetch('/api/telegram', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: order.customerName || 'Unknown',
+            email: order.customerEmail || 'Not provided',
+            message: `🛒 <b>New Crypto Order</b>
+
+📦 <b>Order ID:</b> ${order.orderId}
+📱 <b>Plan:</b> ${order.planName}
+🏢 <b>Carrier:</b> ${order.carrier}
+💰 <b>Amount:</b> $${order.price}
+💳 <b>Payment:</b> Crypto (USDT)
+👤 <b>Customer:</b> ${order.customerName || 'N/A'}
+📧 <b>Email:</b> ${order.customerEmail || 'N/A'}
+📞 <b>Phone:</b> ${order.customerPhone || 'N/A'}
+
+⏰ <b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}
+
+⚠️ <b>Status:</b> Pending crypto payment`,
+            visitorId: `order-${order.orderId}`,
+            isReply: false,
+          }),
+        }).catch(err => console.error('Failed to send Telegram notification:', err));
+
+        // Create FPayment invoice
+        const response = await fetch('/api/fpayment/create-invoice', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            merchant_id: parsed.fpaymentMerchantId,
+            api_key: parsed.fpaymentApiKey,
+            name: `${pkg.name} - ${pkg.carrier}`,
+            description: `Mobile plan: ${pkg.name} for ${pkg.carrier}`,
+            amount: pkg.price.toString(),
+            request_id: orderId,
+            callback_url: callbackUrl,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success' && result.url) {
+          // Redirect to FPayment payment page
+          window.location.href = result.url;
+        } else {
+          alert(`Crypto Payment Error: ${result.msg || 'Failed to create payment invoice. Please try again.'}`);
+        }
+      } catch (error: any) {
+        console.error('FPayment error:', error);
+        alert(`Error: ${error.message || 'Failed to process crypto payment. Please try again.'}`);
+      }
       return;
     }
 
@@ -734,6 +908,33 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
 
+    // Send Telegram notification for new order (non-blocking)
+    fetch('/api/telegram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: order.customerName || 'Unknown',
+        email: order.customerEmail || 'Not provided',
+        message: `🛒 <b>New Order Received</b>
+
+📦 <b>Order ID:</b> ${order.orderId}
+📱 <b>Plan:</b> ${order.planName}
+🏢 <b>Carrier:</b> ${order.carrier}
+💰 <b>Amount:</b> $${order.price}
+💳 <b>Payment:</b> ${order.paymentMethod.toUpperCase()}
+👤 <b>Customer:</b> ${order.customerName || 'N/A'}
+📧 <b>Email:</b> ${order.customerEmail || 'N/A'}
+📞 <b>Phone:</b> ${order.customerPhone || 'N/A'}
+📝 <b>Notes:</b> ${order.customerNotes || 'None'}
+
+⏰ <b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+        visitorId: `order-${order.orderId}`,
+        isReply: false,
+      }),
+    }).catch(err => console.error('Failed to send Telegram notification:', err));
+
     // Show success message in modal instead of alert
     setSuccessOrder(order);
     setPaymentSuccess(true);
@@ -762,18 +963,18 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1f3a] rounded-xl p-2 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative"
+        className="bg-[#1a1f3a] rounded-xl p-2.5 sm:p-6 md:p-8 max-w-2xl w-full max-h-[92vh] sm:max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Progress indicator - Only show if not success */}
         {!paymentSuccess && (
-          <div className="flex items-center justify-center mb-2 sm:mb-6 gap-2">
+          <div className="flex items-center justify-center mb-2 sm:mb-4 gap-2">
             <div className={`h-1 rounded-full transition-all duration-300 ${step === 'customer-info' ? 'w-10 bg-gray-300' : 'w-6 bg-gray-600'}`}></div>
             <div className={`h-1 rounded-full transition-all duration-300 ${step === 'payment-method' ? 'w-10 bg-gray-300' : 'w-6 bg-gray-600'}`}></div>
           </div>
         )}
 
-        <div className="flex justify-between items-center mb-2 sm:mb-6">
+        <div className="flex justify-between items-center mb-2 sm:mb-4">
           <div>
             <h2 className="text-sm sm:text-2xl md:text-3xl font-semibold text-white">
               {paymentSuccess ? 'Order Confirmed' : 'Complete Your Order'}
@@ -792,7 +993,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
         {/* Plan Summary Card - Only show if not success */}
         {!paymentSuccess && (
-          <div className="mb-2 sm:mb-6 p-2 sm:p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div className="mb-1.5 sm:mb-4 p-2 sm:p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="text-[9px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1 uppercase tracking-wide truncate">{carrierNames[pkg.carrier]}</div>
@@ -813,39 +1014,39 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
         )}
 
             {paymentSuccess && successOrder ? (
-              <div className="space-y-6 text-center">
-                <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                  <i className="fas fa-check-circle text-green-400 text-4xl"></i>
+              <div className="space-y-4 sm:space-y-6 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2 sm:mb-4">
+                  <i className="fas fa-check-circle text-green-400 text-2xl sm:text-4xl"></i>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-green-400 mb-2">Order Placed Successfully!</h3>
-                  <p className="text-gray-400 text-sm mb-6">Your order has been received</p>
+                  <h3 className="text-lg sm:text-2xl font-bold text-green-400 mb-1.5 sm:mb-2">Order Placed Successfully!</h3>
+                  <p className="text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6">Your order has been received</p>
                 </div>
                 
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 space-y-4 text-left">
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                <div className="bg-gray-800/50 rounded-lg p-3 sm:p-6 border border-gray-700 space-y-2 sm:space-y-4 text-left">
+                  <div className="flex justify-between items-center pb-2 sm:pb-3 border-b border-gray-700 text-xs sm:text-sm">
                     <span className="text-gray-400">Order ID:</span>
-                    <span className="font-mono text-white font-semibold">{successOrder.orderId}</span>
+                    <span className="font-mono text-white font-semibold text-[10px] sm:text-sm truncate ml-2">{successOrder.orderId}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                  <div className="flex justify-between items-center pb-2 sm:pb-3 border-b border-gray-700 text-xs sm:text-sm">
                     <span className="text-gray-400">Plan:</span>
-                    <span className="text-white font-semibold">{successOrder.planName}</span>
+                    <span className="text-white font-semibold truncate ml-2">{successOrder.planName}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                  <div className="flex justify-between items-center pb-2 sm:pb-3 border-b border-gray-700 text-xs sm:text-sm">
                     <span className="text-gray-400">Carrier:</span>
-                    <span className="text-white capitalize">{carrierNames[successOrder.carrier]}</span>
+                    <span className="text-white capitalize truncate ml-2">{carrierNames[successOrder.carrier]}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                  <div className="flex justify-between items-center pb-2 sm:pb-3 border-b border-gray-700 text-xs sm:text-sm">
                     <span className="text-gray-400">Amount:</span>
-                    <span className="text-white font-semibold text-xl">${successOrder.price}</span>
+                    <span className="text-white font-semibold text-base sm:text-xl">${successOrder.price}</span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-gray-400">Payment Method:</span>
-                    <span className="text-orange-400 font-semibold uppercase">{paymentMethod === 'crypto' ? selectedCrypto.toUpperCase() : 'PayPal'}</span>
+                    <span className="text-orange-400 font-semibold uppercase truncate ml-2">{paymentMethod === 'crypto' ? selectedCrypto.toUpperCase() : 'PayPal'}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
                   <button
                     onClick={onClose}
                     className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-lg font-medium hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px]"
@@ -856,13 +1057,15 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </div>
               </div>
             ) : step === 'customer-info' ? (
-          <div className="space-y-2.5 sm:space-y-5">
+          <div className="space-y-2 sm:space-y-4">
             {/* Important Notice */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-4 mb-1 sm:mb-2">
+            <div className="bg-[#1A2036] border border-[#36405B] rounded-lg p-2 sm:p-4 mb-1 sm:mb-2">
               <div className="flex items-start gap-2 sm:gap-3">
-                <i className="fas fa-info-circle text-blue-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i className="fas fa-info text-white text-xs sm:text-sm"></i>
+                </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-blue-400 mb-0.5 sm:mb-1 text-xs sm:text-base">Important Notice</h4>
+                  <h4 className="font-semibold text-red-400 mb-0.5 sm:mb-1 text-xs sm:text-base">Important Notice</h4>
                   <p className="text-gray-300 text-[11px] sm:text-sm leading-relaxed">
                     Please enter <strong className="text-white">accurate and correct information</strong>. This information will be used to activate your mobile plan. Incorrect information may result in delays or failure to receive your service package.
                   </p>
@@ -964,18 +1167,18 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </button>
           </div>
         ) : (
-          <div className="space-y-3 sm:space-y-6">
+          <div className="space-y-2 sm:space-y-4">
             <div>
               <h3 className="text-sm sm:text-xl font-semibold mb-0.5 sm:mb-1 text-white">
                 Choose Payment Method
               </h3>
-              <p className="text-gray-400 text-[10px] sm:text-sm">Select your preferred payment method</p>
+              <p className="text-gray-400 text-[10px] sm:text-sm hidden sm:block">Select your preferred payment method</p>
             </div>
 
             {/* PayPal Button - Large and prominent */}
             <button
               onClick={() => setPaymentMethod('paypal')}
-              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
+              className={`w-full p-2.5 sm:p-4 rounded-lg border-2 transition-all relative ${
                 paymentMethod === 'paypal'
                   ? 'border-blue-400 bg-blue-600/20 shadow-lg shadow-blue-500/20'
                   : 'border-gray-600 bg-gray-800 hover:border-gray-500'
@@ -1004,75 +1207,54 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               </div>
             </button>
 
-            {/* Credit/Debit Card Button - Also via PayPal */}
-            <button
-              onClick={() => setPaymentMethod('paypal')}
-              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
-                paymentMethod === 'paypal'
-                  ? 'border-gray-500 bg-gray-700/50'
-                  : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 border-2 ${
-                  paymentMethod === 'paypal' 
-                    ? 'bg-gray-700 border-gray-500' 
-                    : 'bg-gray-800 border-gray-600'
-                }`}>
-                  <i className="fas fa-credit-card text-xl sm:text-2xl text-white"></i>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white text-base sm:text-lg">Thẻ ghi nợ hoặc tín dụng</span>
-                    {paymentMethod === 'paypal' && (
-                      <i className="fas fa-check-circle text-green-400 text-sm"></i>
+            {/* FPayment Button */}
+            {(() => {
+              if (typeof window === 'undefined') return null;
+              const settings = localStorage.getItem('adminSettings');
+              if (!settings) return null;
+              try {
+                const parsed = JSON.parse(settings);
+                if (!parsed.fpaymentEnabled) return null;
+              } catch {
+                return null;
+              }
+              return (
+                <button
+                  onClick={() => setPaymentMethod('fpayment')}
+                  className={`w-full p-2.5 sm:p-4 rounded-lg border-2 transition-all relative ${
+                    paymentMethod === 'fpayment'
+                      ? 'border-[#7F70F5] bg-[#201E3B] shadow-lg shadow-purple-500/20'
+                      : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      paymentMethod === 'fpayment' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500' : 'bg-gray-700'
+                    }`}>
+                      <i className="fas fa-coins text-2xl sm:text-3xl text-white"></i>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white text-base sm:text-lg">Crypto</span>
+                        {paymentMethod === 'fpayment' && (
+                          <i className="fas fa-check-circle text-green-400 text-sm"></i>
+                        )}
+                      </div>
+                      <span className="text-gray-400 text-xs sm:text-sm">Pay with cryptocurrency (USDT)</span>
+                    </div>
+                    {paymentMethod === 'fpayment' && (
+                      <div className="text-indigo-400">
+                        <i className="fas fa-chevron-right"></i>
+                      </div>
                     )}
                   </div>
-                  <span className="text-gray-400 text-xs sm:text-sm">Được hỗ trợ bởi PayPal</span>
-                </div>
-                {paymentMethod === 'paypal' && (
-                  <div className="text-gray-400">
-                    <i className="fas fa-chevron-right"></i>
-                  </div>
-                )}
-              </div>
-            </button>
-
-            {/* Cryptocurrency Button */}
-            <button
-              onClick={() => setPaymentMethod('crypto')}
-              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
-                paymentMethod === 'crypto'
-                  ? 'border-orange-400 bg-orange-600/20 shadow-lg shadow-orange-500/20'
-                  : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  paymentMethod === 'crypto' ? 'bg-orange-600' : 'bg-gray-700'
-                }`}>
-                  <i className="fab fa-bitcoin text-2xl sm:text-3xl text-white"></i>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white text-base sm:text-lg">Cryptocurrency</span>
-                    {paymentMethod === 'crypto' && (
-                      <i className="fas fa-check-circle text-green-400 text-sm"></i>
-                    )}
-                  </div>
-                  <span className="text-gray-400 text-xs sm:text-sm">BTC, ETH, USDT, BNB</span>
-                </div>
-                {paymentMethod === 'crypto' && (
-                  <div className="text-orange-400">
-                    <i className="fas fa-chevron-right"></i>
-                  </div>
-                )}
-              </div>
-            </button>
+                </button>
+              );
+            })()}
 
             {/* PayPal Payment */}
             {paymentMethod === 'paypal' && (
-              <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
+              <div className="mt-2 sm:mt-4 space-y-2 sm:space-y-3">
                     {/* Payment Message (for cancellations, errors, etc.) */}
                     {cryptoMessage && (
                       <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
@@ -1165,8 +1347,8 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     </div>
 
                     {/* Payment Instructions for PayPal */}
-                    <div className="mt-3 sm:mt-4">
-                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2.5 sm:p-4">
+                    <div className="mt-2 sm:mt-3">
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 sm:p-3">
                         <div className="flex items-start gap-2 sm:gap-3">
                           <i className="fas fa-info-circle text-yellow-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
                           <div className="flex-1">
@@ -1252,6 +1434,57 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       </>
                     )}
                   </div>
+            )}
+
+            {/* Crypto Payment */}
+            {paymentMethod === 'fpayment' && (
+              <div className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
+                <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                      <i className="fas fa-coins text-xl text-white"></i>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-indigo-400 mb-2">Crypto Payment</h4>
+                      <p className="text-gray-300 text-sm leading-relaxed">
+                        You will be redirected to the payment page to complete your payment with USDT. 
+                        After successful payment, you will be redirected back to this page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Instructions for Crypto */}
+                <div className="mt-2 sm:mt-3">
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 sm:p-3">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <i className="fas fa-info-circle text-yellow-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-yellow-400 mb-1 sm:mb-2 text-xs sm:text-base">Payment Instructions</h4>
+                        <p className="text-gray-300 text-[11px] sm:text-sm mb-1.5 sm:mb-2">
+                          Please complete your payment using the Crypto button below. The amount of <span className="font-bold text-white">${pkg.price} USD</span> will be charged via USDT cryptocurrency.
+                        </p>
+                        <p className="text-gray-400 text-[10px] sm:text-xs">
+                          We will contact you at <span className="text-white font-semibold">{customerInfo.email || 'your email'}</span> once payment is confirmed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">Amount:</span>
+                      <span className="ml-2 font-semibold text-white">${pkg.price}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Currency:</span>
+                      <span className="ml-2 font-semibold text-white">USD</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Cryptocurrency Payment */}
@@ -1591,7 +1824,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-700">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-700 sticky bottom-0 bg-[#1a1f3a] -mx-2.5 sm:-mx-6 md:-mx-8 px-2.5 sm:px-6 md:px-8 pb-2 sm:pb-0 z-10">
               <button
                 onClick={() => setStep('customer-info')}
                 className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg font-medium hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px]"
@@ -1599,7 +1832,16 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 <i className="fas fa-arrow-left"></i>
                 <span>Back</span>
               </button>
-              {paymentMethod !== 'paypal' && (() => {
+              {paymentMethod === 'fpayment' && (
+                <button
+                  onClick={handlePayment}
+                  className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white cursor-pointer shadow-lg hover:shadow-purple-500/50"
+                >
+                  <i className="fas fa-coins text-white"></i>
+                  <span>Complete Order with Crypto</span>
+                </button>
+              )}
+              {paymentMethod !== 'paypal' && paymentMethod !== 'fpayment' && (() => {
                 // Check directly if crypto address is configured
                 const isCryptoDisabled = paymentMethod === 'crypto' && (() => {
                   if (typeof window !== 'undefined') {
@@ -1648,10 +1890,6 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               })()}
             </div>
           </div>
-            )}
-          </div>
-          </div>
-          )}
         )}
       </div>
     </div>

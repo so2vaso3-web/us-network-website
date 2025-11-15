@@ -131,12 +131,12 @@ export default function CarrierSection() {
         <p className="text-center text-gray-400 mb-8 max-w-2xl mx-auto">
           Partnered with the top mobile network providers in the United States
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
           {carriers.map(carrier => (
             <div
               key={carrier.key}
               onClick={() => handleCarrierClick(carrier.key)}
-              className="bg-white/5 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:transform hover:scale-105 cursor-pointer group hover:shadow-xl hover:shadow-blue-500/20"
+              className="bg-white/5 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:transform hover:scale-105 cursor-pointer group hover:shadow-xl hover:shadow-blue-500/20"
             >
               <div className="flex flex-col items-center justify-center text-center">
                 {carrierLogos[carrier.key] ? (
@@ -145,16 +145,16 @@ export default function CarrierSection() {
                     <img
                       src={carrierLogos[carrier.key]}
                       alt={carrier.name}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300"
+                      className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300"
                       style={{ filter: 'none', maxWidth: '100%', height: 'auto' }}
                     />
                   </>
                 ) : (
-                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-white/20 transition-all duration-300 ${carrier.color}`}>
-                    <i className="fas fa-signal text-2xl sm:text-3xl"></i>
+                  <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:bg-white/20 transition-all duration-300 ${carrier.color}`}>
+                    <i className="fas fa-signal text-xl sm:text-2xl md:text-3xl"></i>
                   </div>
                 )}
-                <h3 className="font-bold text-sm sm:text-lg group-hover:text-blue-400 transition-colors">{carrier.name}</h3>
+                <h3 className="font-bold text-xs sm:text-sm md:text-lg group-hover:text-blue-400 transition-colors">{carrier.name}</h3>
               </div>
             </div>
           ))}

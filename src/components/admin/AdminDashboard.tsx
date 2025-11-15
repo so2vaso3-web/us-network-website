@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AlertModal from '@/components/AlertModal';
 
 export default function AdminDashboard() {
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
   const [stats, setStats] = useState({
     totalPackages: 0,
     totalOrders: 0,
@@ -139,7 +141,7 @@ export default function AdminDashboard() {
               a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
               a.click();
               URL.revokeObjectURL(url);
-              alert('Đã xuất backup thành công!');
+              setAlertModal({ isOpen: true, message: 'Đã xuất backup thành công!', type: 'success' });
             }}
             className="px-3 sm:px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] w-full sm:w-auto"
           >
@@ -163,10 +165,10 @@ export default function AdminDashboard() {
                       if (data.orders) localStorage.setItem('orders', JSON.stringify(data.orders));
                       if (data.settings) localStorage.setItem('adminSettings', JSON.stringify(data.settings));
                       if (data.content) localStorage.setItem('websiteContent', JSON.stringify(data.content));
-                      alert('Đã khôi phục backup thành công! Vui lòng refresh trang.');
-                      window.location.reload();
+                      setAlertModal({ isOpen: true, message: 'Đã khôi phục backup thành công! Vui lòng refresh trang.', type: 'success' });
+                      setTimeout(() => window.location.reload(), 1500);
                     } catch (err) {
-                      alert('Lỗi: File backup không hợp lệ!');
+                      setAlertModal({ isOpen: true, message: 'Lỗi: File backup không hợp lệ!', type: 'error' });
                     }
                   };
                   reader.readAsText(file);

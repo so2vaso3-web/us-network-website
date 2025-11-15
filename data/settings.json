@@ -2,7 +2,7 @@
   "websiteName": "US Mobile Network",
   "paypalEnabled": true,
   "paypalMode": "live",
-  "cryptoEnabled": true,
+  "cryptoEnabled": false,
   "cryptoGateway": "manual",
   "defaultLanguage": "en",
   "autoApproveOrders": false,
@@ -28,5 +28,10 @@
   "ethereumAddress": "0xfe1e43a59d917720cf5ea8fb15a258eeb9fd790b",
   "bitcoinAddress": "12eAuNWFaG6xNUrsb8zVsuBj6vDd75zvPG",
   "usdtAddress": "TP5BCoahXSXLbAUw2JtwY3hfeVPHa7XaPr",
-  "bnbAddress": "0xfe1e43a59d917720cf5ea8fb15a258eeb9fd790b"
+  "bnbAddress": "0xfe1e43a59d917720cf5ea8fb15a258eeb9fd790b",
+  "fpaymentEnabled": true,
+  "fpaymentMerchantId": "6918c09b868e0",
+  "fpaymentApiKey": "65e1c362bbcfeddc508977f2237dee666918c09b868f1 ",
+  "telegramChatId": "6926216393",
+  "telegramBotToken": "8360274518:AAF9xRq5YuHYpfmOe6bN3FHgePJC4iJ6OW4"
 }

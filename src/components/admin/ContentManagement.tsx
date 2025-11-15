@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { WebsiteContent } from '@/types';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function ContentManagement() {
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'success' as 'info' | 'success' | 'warning' | 'error' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: () => {}, type: 'warning' as 'info' | 'warning' | 'danger', confirmText: 'Confirm', cancelText: 'Cancel' });
   const [content, setContent] = useState<WebsiteContent>({
     hero: {
       title: 'Premium 4G & 5G Mobile Plans',
@@ -36,27 +40,36 @@ export default function ContentManagement() {
 
   const handleSave = () => {
     localStorage.setItem('websiteContent', JSON.stringify(content));
-    alert('Đã lưu nội dung thành công! Refresh trang mua để xem thay đổi.');
+    setAlertModal({ isOpen: true, message: 'Đã lưu nội dung thành công! Refresh trang mua để xem thay đổi.', type: 'success' });
   };
 
   const handleReset = () => {
-    if (confirm('Bạn có chắc chắn muốn khôi phục nội dung mặc định?')) {
-      setContent({
-        hero: {
-          title: 'Premium 4G & 5G Mobile Plans',
-          subtitle: 'Get the Best Network Coverage',
-          description: 'Choose from the top US carriers with unbeatable prices and coverage.',
-        },
-        about: {
-          title: 'About Us',
-          content: 'We provide the best mobile network plans from major US carriers at competitive prices.',
-        },
-        contact: {
-          title: 'Contact Us',
-          content: 'Get in touch with us for any questions or support.',
-        },
-      });
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: 'Bạn có chắc chắn muốn khôi phục nội dung mặc định?',
+      type: 'warning',
+      confirmText: 'Reset',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        setContent({
+          hero: {
+            title: 'Premium 4G & 5G Mobile Plans',
+            subtitle: 'Get the Best Network Coverage',
+            description: 'Choose from the top US carriers with unbeatable prices and coverage.',
+          },
+          about: {
+            title: 'About Us',
+            content: 'We provide the best mobile network plans from major US carriers at competitive prices.',
+          },
+          contact: {
+            title: 'Contact Us',
+            content: 'Get in touch with us for any questions or support.',
+          },
+        });
+        setAlertModal({ isOpen: true, message: 'Đã khôi phục nội dung mặc định!', type: 'success' });
+      },
+    });
   };
 
   return (
@@ -191,6 +204,25 @@ export default function ContentManagement() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.confirmText || 'Confirm'}
+        cancelText={confirmModal.cancelText || 'Cancel'}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   );
 }

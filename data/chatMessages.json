@@ -1,0 +1,142 @@
+[
+  {
+    "id": "msg-1763239758511",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "a",
+    "email": "so2vaso3@gmail.com",
+    "message": "dd",
+    "timestamp": "2025-11-15T20:49:18.511Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "reply-1763239763053",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "Admin",
+    "email": "",
+    "message": "aa",
+    "timestamp": "2025-11-15T20:49:23.053Z",
+    "isAdmin": true,
+    "read": false
+  },
+  {
+    "id": "welcome-1763239880520",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "Support Team",
+    "email": "",
+    "message": "👋 Hello! Welcome to our support chat. We're here to help you with any questions or concerns. How can we assist you today?",
+    "timestamp": "2025-11-15T20:51:20.520Z",
+    "isAdmin": true,
+    "read": false
+  },
+  {
+    "id": "msg-1763239893752",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "ee",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "ád",
+    "timestamp": "2025-11-15T20:51:33.752Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763240065688",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "w",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "ww",
+    "timestamp": "2025-11-15T20:54:25.688Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763240075076",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "w",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "wwwwww",
+    "timestamp": "2025-11-15T20:54:35.076Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763242679871",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "ê",
+    "email": "so2vaso3@gmail.com",
+    "message": "ww",
+    "timestamp": "2025-11-15T21:37:59.871Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "reply-1763243075611",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "Admin",
+    "email": "",
+    "message": "ê",
+    "timestamp": "2025-11-15T21:44:35.611Z",
+    "isAdmin": true,
+    "read": false
+  },
+  {
+    "id": "msg-1763243638183",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "e",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "sd",
+    "timestamp": "2025-11-15T21:53:58.183Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763243639455",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "e",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "sđ",
+    "timestamp": "2025-11-15T21:53:59.455Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763243640015",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "e",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "sd",
+    "timestamp": "2025-11-15T21:54:00.015Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "msg-1763243640535",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "e",
+    "email": "cuutil@dxddk.capcut13.name.ng",
+    "message": "ds",
+    "timestamp": "2025-11-15T21:54:00.535Z",
+    "isAdmin": false,
+    "read": true
+  },
+  {
+    "id": "reply-1763243650051",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "Admin",
+    "email": "",
+    "message": "cc",
+    "timestamp": "2025-11-15T21:54:10.051Z",
+    "isAdmin": true,
+    "read": false
+  },
+  {
+    "id": "msg-1763243795757",
+    "visitorId": "visitor-1763093469182-ui2lzknv2",
+    "name": "ee",
+    "email": "so2vaso3@gmail.com",
+    "message": "ê",
+    "timestamp": "2025-11-15T21:56:35.757Z",
+    "isAdmin": false,
+    "read": false
+  }
+]

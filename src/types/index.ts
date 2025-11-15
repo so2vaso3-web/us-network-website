@@ -17,7 +17,7 @@ export interface Order {
   planName: string;
   carrier: string;
   price: number;
-  paymentMethod: 'paypal' | 'crypto';
+  paymentMethod: 'paypal' | 'crypto' | 'fpayment';
   status: 'pending' | 'completed' | 'cancelled';
   customerName?: string;
   customerEmail?: string;
@@ -76,6 +76,10 @@ export interface AdminSettings {
   };
   telegramBotToken?: string;
   telegramChatId?: string;
+  fpaymentEnabled?: boolean;
+  fpaymentMerchantId?: string;
+  fpaymentApiKey?: string;
+  fpaymentMode?: 'sandbox' | 'live';
 }
 
 export interface WebsiteContent {

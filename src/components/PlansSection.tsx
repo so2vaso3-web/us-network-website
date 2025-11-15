@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import PlanCard from './PlanCard';
 import CompareModal from './CompareModal';
+import AlertModal from './AlertModal';
 import { Package } from '@/types';
 import { defaultPackages } from '@/lib/data';
 
@@ -13,6 +14,7 @@ export default function PlansSection() {
   const [sortBy, setSortBy] = useState<'price' | 'name'>('price');
   const [compareList, setCompareList] = useState<string[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'warning' as 'info' | 'success' | 'warning' | 'error' });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -69,7 +71,7 @@ export default function PlansSection() {
         return newList;
       } else {
         if (prev.length >= 4) {
-          alert('You can only compare up to 4 plans at once!');
+          setAlertModal({ isOpen: true, message: 'You can only compare up to 4 plans at once!', type: 'warning' });
           return prev;
         }
         return [...prev, planId];
@@ -110,12 +112,12 @@ export default function PlansSection() {
       )}
 
       <div className="container mx-auto px-0 sm:px-4">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent px-4 sm:px-0">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-3 sm:mb-4 md:mb-6 lg:mb-8 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent px-4 sm:px-0">
           Choose Your Plan
         </h2>
 
         {/* Filters and Search */}
-        <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+        <div className="mb-3 sm:mb-4 md:mb-6 space-y-2 sm:space-y-3 md:space-y-4">
               {/* Filter Buttons */}
               <div className="flex flex-wrap gap-2 justify-center px-4 sm:px-0">
                 <button
@@ -175,7 +177,7 @@ export default function PlansSection() {
         </div>
 
             {/* Plans Grid - 2 columns on mobile, larger grid on desktop */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-5 lg:gap-6 px-2 sm:px-0">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6 px-2 sm:px-0">
               {filteredAndSortedPackages.length > 0 ? (
                 filteredAndSortedPackages.map(pkg => (
                   <PlanCard
