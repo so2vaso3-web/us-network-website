@@ -125,6 +125,9 @@ export function useSettings() {
  */
 export async function saveSettingsToServer(settings: AdminSettings): Promise<boolean> {
   try {
+    // Đảm bảo gửi FULL settings object, không thiếu field nào
+    const fullSettings = { ...settings };
+    
     // Thêm timestamp để tránh browser cache
     const response = await fetch(`/api/settings?t=${Date.now()}`, {
       method: 'POST',
@@ -134,27 +137,31 @@ export async function saveSettingsToServer(settings: AdminSettings): Promise<boo
         'Pragma': 'no-cache',
         'Expires': '0',
       },
-      body: JSON.stringify({ settings }),
+      body: JSON.stringify({ settings: fullSettings }), // GỬI FULL SETTINGS
       cache: 'no-store',
     });
 
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
-        // Lưu vào localStorage làm cache (sau khi save thành công)
+        // Lưu vào localStorage làm cache (sau khi save thành công) - FULL OBJECT
         if (typeof window !== 'undefined') {
-          localStorage.setItem('adminSettings', JSON.stringify(settings));
+          localStorage.setItem('adminSettings', JSON.stringify(fullSettings));
           localStorage.setItem('settingsLastUpdate', new Date().toISOString());
         }
         // Dispatch event để tất cả component cập nhật ngay
         notifySettingsUpdated();
         return true;
+      } else {
+        console.error('Save failed:', data.error || 'Unknown error');
       }
+    } else {
+      console.error('Save failed with status:', response.status);
     }
     return false;
   } catch (error) {
     console.error('Error saving settings to server:', error);
-    // Nếu lỗi, vẫn giữ localStorage để không mất data
+    // Nếu lỗi, vẫn giữ localStorage để không mất data - FULL OBJECT
     if (typeof window !== 'undefined') {
       localStorage.setItem('adminSettings', JSON.stringify(settings));
       localStorage.setItem('settingsLastUpdate', new Date().toISOString());

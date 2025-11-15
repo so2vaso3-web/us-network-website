@@ -84,17 +84,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Merge with existing settings và đảm bảo các boolean fields luôn có giá trị rõ ràng
+    // Merge with existing settings - ĐẢM BẢO KHÔNG MẤT BẤT KỲ FIELD NÀO
     const existingSettings = await readSettings();
-    const updatedSettings = { 
-      ...existingSettings, 
-      ...settings,
-      // Đảm bảo các boolean fields không bị undefined hoặc null
-      paypalEnabled: settings.paypalEnabled !== undefined ? settings.paypalEnabled : (existingSettings.paypalEnabled ?? false),
-      cryptoEnabled: settings.cryptoEnabled !== undefined ? settings.cryptoEnabled : (existingSettings.cryptoEnabled ?? false),
-      autoApproveOrders: settings.autoApproveOrders !== undefined ? settings.autoApproveOrders : (existingSettings.autoApproveOrders ?? false),
-      emailNotifications: settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false),
+    
+    // Merge: Giữ lại TẤT CẢ fields từ existing, chỉ update những fields có trong settings mới
+    // Điều này đảm bảo không mất PayPal Client ID, Secret, hay bất kỳ field nào
+    const updatedSettings: any = { 
+      ...existingSettings, // Giữ lại TẤT CẢ fields cũ
+      ...settings, // Update với fields mới
     };
+    
+    // Đảm bảo các boolean fields không bị undefined hoặc null
+    updatedSettings.paypalEnabled = settings.paypalEnabled !== undefined ? settings.paypalEnabled : (existingSettings.paypalEnabled ?? false);
+    updatedSettings.cryptoEnabled = settings.cryptoEnabled !== undefined ? settings.cryptoEnabled : (existingSettings.cryptoEnabled ?? false);
+    updatedSettings.autoApproveOrders = settings.autoApproveOrders !== undefined ? settings.autoApproveOrders : (existingSettings.autoApproveOrders ?? false);
+    updatedSettings.emailNotifications = settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false);
+    
+    // Đảm bảo các string fields không bị mất nếu đã có giá trị
+    if (existingSettings.paypalClientId && !settings.paypalClientId) {
+      updatedSettings.paypalClientId = existingSettings.paypalClientId; // Giữ lại nếu không có trong settings mới
+    }
+    if (existingSettings.paypalClientSecret && !settings.paypalClientSecret) {
+      updatedSettings.paypalClientSecret = existingSettings.paypalClientSecret; // Giữ lại nếu không có trong settings mới
+    }
+    if (existingSettings.telegramBotToken && !settings.telegramBotToken) {
+      updatedSettings.telegramBotToken = existingSettings.telegramBotToken; // Giữ lại nếu không có trong settings mới
+    }
+    if (existingSettings.telegramChatId && !settings.telegramChatId) {
+      updatedSettings.telegramChatId = existingSettings.telegramChatId; // Giữ lại nếu không có trong settings mới
+    }
 
     await saveSettings(updatedSettings);
     

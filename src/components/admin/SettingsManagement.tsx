@@ -153,36 +153,62 @@ export default function SettingsManagement() {
     // Để tránh server polling overwrite user input
   }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
 
-  // Auto-save function với debounce
+  // Auto-save function với debounce - ĐẢM BẢO GỬI FULL SETTINGS
   const autoSave = useCallback(async (settingsToSave: AdminSettings) => {
     if (isAutoSavingRef.current) return;
     
     isAutoSavingRef.current = true;
     try {
-      // Lưu vào localStorage ngay lập tức (backup)
-      localStorage.setItem('adminSettings', JSON.stringify(settingsToSave));
+      // Lưu vào localStorage ngay lập tức (backup) - ĐẢM BẢO FULL OBJECT
+      const fullSettings = { ...settingsToSave };
+      localStorage.setItem('adminSettings', JSON.stringify(fullSettings));
       localStorage.setItem('settingsLastUpdate', new Date().toISOString());
       
-      // Lưu lên server (và Vercel KV nếu có)
-      const success = await saveSettingsToServer(settingsToSave);
+      // Lưu lên server (và Vercel KV nếu có) - GỬI FULL SETTINGS
+      const success = await saveSettingsToServer(fullSettings);
       
       if (success) {
         setHasLocalChanges(false);
         // Không hiển thị toast để không làm phiền user
+      } else {
+        console.error('Auto-save failed, but localStorage is saved');
       }
     } catch (error) {
       console.error('Auto-save error:', error);
+      // Vẫn giữ localStorage để không mất data
     } finally {
       isAutoSavingRef.current = false;
     }
   }, []);
 
-  // Wrapper để update settings và auto-save
+  // Wrapper để update settings và auto-save - ĐẢM BẢO MERGE ĐÚNG
   const updateSettings = (updates: Partial<AdminSettings>) => {
     setSettings(prev => {
-      const newSettings = { ...prev, ...updates };
+      // Merge với prev để đảm bảo không mất fields
+      const newSettings: AdminSettings = { 
+        ...prev, // Giữ lại TẤT CẢ fields cũ
+        ...updates, // Update với fields mới
+      };
       
-      // Lưu vào localStorage ngay lập tức (backup)
+      // Đảm bảo các fields quan trọng không bị mất
+      if (prev) {
+        // Giữ lại các string fields nếu updates không có HOẶC là undefined
+        // Chỉ update nếu updates có giá trị rõ ràng (không phải undefined)
+        if (prev.paypalClientId && updates.paypalClientId === undefined) {
+          newSettings.paypalClientId = prev.paypalClientId;
+        }
+        if (prev.paypalClientSecret && updates.paypalClientSecret === undefined) {
+          newSettings.paypalClientSecret = prev.paypalClientSecret;
+        }
+        if (prev.telegramBotToken && updates.telegramBotToken === undefined) {
+          newSettings.telegramBotToken = prev.telegramBotToken;
+        }
+        if (prev.telegramChatId && updates.telegramChatId === undefined) {
+          newSettings.telegramChatId = prev.telegramChatId;
+        }
+      }
+      
+      // Lưu vào localStorage ngay lập tức (backup) - FULL OBJECT
       localStorage.setItem('adminSettings', JSON.stringify(newSettings));
       localStorage.setItem('settingsLastUpdate', new Date().toISOString());
       
@@ -191,10 +217,10 @@ export default function SettingsManagement() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
       
-      // Auto-save lên server sau 3 giây không nhập (debounce) - tăng lên để tránh conflict
+      // Auto-save lên server sau 2 giây không nhập (debounce) - giảm để save nhanh hơn
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSave(newSettings);
-      }, 3000); // 3 giây
+      }, 2000); // 2 giây
       
       setHasLocalChanges(true);
       return newSettings;
