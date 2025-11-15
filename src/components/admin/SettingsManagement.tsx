@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AdminSettings } from '@/types';
 import { useSettings, saveSettingsToServer, notifySettingsUpdated } from '@/lib/useSettings';
+import Toast from '@/components/Toast';
 
 export default function SettingsManagement() {
   const { settings: serverSettings, isLoading } = useSettings();
@@ -18,6 +19,8 @@ export default function SettingsManagement() {
     ordersPerPage: 10,
     carrierLogos: {},
   });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (serverSettings) {
@@ -26,18 +29,41 @@ export default function SettingsManagement() {
   }, [serverSettings]);
 
   const handleSave = async () => {
-    // Lưu vào localStorage làm cache tạm thời
-    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    // Validation
+    if (settings.paypalEnabled) {
+      if (!settings.paypalClientId || settings.paypalClientId.trim() === '') {
+        setToast({ message: 'Vui lòng nhập PayPal Client ID!', type: 'error' });
+        return;
+      }
+    }
+
+    if (settings.telegramBotToken || settings.telegramChatId) {
+      if (!settings.telegramBotToken || !settings.telegramChatId) {
+        setToast({ message: 'Cần nhập đầy đủ Telegram Bot Token và Chat ID!', type: 'warning' });
+      }
+    }
+
+    setSaving(true);
     
-    // Lưu lên server để đồng bộ với tất cả thiết bị
-    const success = await saveSettingsToServer(settings);
-    
-    if (success) {
-      alert('Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.');
-    } else {
-      alert('Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.');
-      // Vẫn dispatch event để cập nhật trong tab hiện tại
-      notifySettingsUpdated();
+    try {
+      // Lưu vào localStorage làm cache tạm thời
+      localStorage.setItem('adminSettings', JSON.stringify(settings));
+      
+      // Lưu lên server để đồng bộ với tất cả thiết bị
+      const success = await saveSettingsToServer(settings);
+      
+      if (success) {
+        setToast({ message: 'Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.', type: 'success' });
+      } else {
+        setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
+        // Vẫn dispatch event để cập nhật trong tab hiện tại
+        notifySettingsUpdated();
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setToast({ message: 'Lỗi khi lưu cài đặt. Vui lòng thử lại.', type: 'error' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -67,7 +93,7 @@ export default function SettingsManagement() {
       ...settings,
       carrierLogos: updatedLogos,
     });
-    alert(`Đã xóa logo ${carrier}!`);
+    setToast({ message: `Đã xóa logo ${carrier}!`, type: 'success' });
   };
 
   const carriers = [
@@ -79,15 +105,49 @@ export default function SettingsManagement() {
     { key: 'cricket', label: 'Cricket Wireless' },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
+          <p className="text-gray-400">Đang tải cài đặt...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Cài Đặt</h2>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold">Cài Đặt</h2>
+          <p className="text-gray-400 text-sm mt-1">Quản lý cấu hình hệ thống và thanh toán</p>
+        </div>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={saving}
+          className={`px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/50 flex items-center gap-2 font-semibold min-w-[150px] justify-center ${
+            saving ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          <i className="fas fa-save mr-2"></i>Lưu Cài Đặt
+          {saving ? (
+            <>
+              <i className="fas fa-spinner fa-spin"></i>
+              <span>Đang lưu...</span>
+            </>
+          ) : (
+            <>
+              <i className="fas fa-save"></i>
+              <span>Lưu Cài Đặt</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -317,13 +377,16 @@ export default function SettingsManagement() {
                 <button
                   onClick={() => {
                     if (!settings.paypalClientId || !settings.paypalClientSecret) {
-                      alert('Vui lòng nhập đầy đủ Client ID và Client Secret!');
+                      setToast({ message: 'Vui lòng nhập đầy đủ Client ID và Client Secret!', type: 'error' });
                       return;
                     }
                     const mode = settings.paypalMode === 'live' ? 'production' : 'sandbox';
-                    alert(`Đang test kết nối PayPal...\n\nMode: ${mode}\nClient ID: ${settings.paypalClientId.substring(0, 20)}...\n\nLưu ý: Test thực sự chỉ hoạt động khi thanh toán.`);
+                    setToast({ 
+                      message: `Test PayPal: Mode ${mode}, Client ID: ${settings.paypalClientId.substring(0, 20)}...`, 
+                      type: 'info' 
+                    });
                   }}
-                  className="w-full px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
                 >
                   <i className="fas fa-plug"></i>
                   <span>Test Kết Nối PayPal</span>
