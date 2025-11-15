@@ -507,7 +507,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     custom_id: orderId,
                   }],
                   application_context: {
-                    brand_name: parsed.websiteName || 'US Mobile Networks',
+                    brand_name: currentSettings.websiteName || 'US Mobile Networks',
                     shipping_preference: 'NO_SHIPPING',
                     user_action: 'PAY_NOW',
                     return_url: returnUrl,
