@@ -33,22 +33,29 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
     if (process.env.REDIS_URL) {
       let client: any = null;
       try {
-        const { createClient } = require('redis');
-        client = createClient({ 
-          url: process.env.REDIS_URL,
-          socket: {
-            connectTimeout: 10000,
-            reconnectStrategy: false
+        // Validate REDIS_URL format
+        const redisUrl = process.env.REDIS_URL.trim();
+        if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+          console.error('Invalid Redis URL format:', redisUrl.substring(0, 30));
+          // Fall through to safe fallback
+        } else {
+          const { createClient } = require('redis');
+          client = createClient({ 
+            url: redisUrl,
+            socket: {
+              connectTimeout: 10000,
+              reconnectStrategy: false
+            }
+          });
+          
+          await client.connect();
+          const redisSettings = await client.get(STORAGE_KEY);
+          await client.quit();
+          
+          if (redisSettings) {
+            const parsed = JSON.parse(redisSettings);
+            return decrypt ? decryptSettings(parsed) : parsed;
           }
-        });
-        
-        await client.connect();
-        const redisSettings = await client.get(STORAGE_KEY);
-        await client.quit();
-        
-        if (redisSettings) {
-          const parsed = JSON.parse(redisSettings);
-          return decrypt ? decryptSettings(parsed) : parsed;
         }
       } catch (e) {
         console.error('Error loading from Redis:', e);
@@ -116,9 +123,15 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
     if (process.env.REDIS_URL) {
       let client: any = null;
       try {
+        // Validate REDIS_URL format
+        const redisUrl = process.env.REDIS_URL.trim();
+        if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+          throw new Error(`Invalid Redis URL format. Must start with redis:// or rediss://. Got: ${redisUrl.substring(0, 20)}...`);
+        }
+        
         const { createClient } = require('redis');
         client = createClient({ 
-          url: process.env.REDIS_URL,
+          url: redisUrl,
           socket: {
             connectTimeout: 10000,
             reconnectStrategy: false
@@ -134,7 +147,13 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
         return;
       } catch (e: any) {
         console.error('❌ Error saving settings to Redis:', e?.message || e);
-        console.error('Redis URL:', process.env.REDIS_URL ? `Set (${process.env.REDIS_URL.substring(0, 20)}...)` : 'Not set');
+        const redisUrlPreview = process.env.REDIS_URL 
+          ? (process.env.REDIS_URL.length > 30 
+              ? `${process.env.REDIS_URL.substring(0, 30)}...` 
+              : process.env.REDIS_URL)
+          : 'Not set';
+        console.error('Redis URL:', redisUrlPreview);
+        console.error('Redis URL length:', process.env.REDIS_URL?.length || 0);
         
         // Try to cleanup if client exists
         if (client) {
@@ -147,7 +166,12 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
           }
         }
         
-        throw new Error(`Redis connection failed: ${e?.message || 'Unknown error'}`);
+        // Provide more helpful error message
+        const errorMsg = e?.message || 'Unknown error';
+        if (errorMsg.includes('Invalid URL') || errorMsg.includes('ENOTFOUND') || errorMsg.includes('ECONNREFUSED')) {
+          throw new Error(`Redis connection failed: Invalid URL or connection refused. Please check REDIS_URL in environment variables.`);
+        }
+        throw new Error(`Redis connection failed: ${errorMsg}`);
       }
     }
     

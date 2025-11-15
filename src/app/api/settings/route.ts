@@ -193,13 +193,23 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/settings:', error);
     const errorMessage = error?.message || 'Failed to save settings';
     
+    // Check if it's a Redis URL error
+    let userFriendlyError = errorMessage;
+    if (errorMessage.includes('Invalid URL') || errorMessage.includes('Invalid Redis URL format')) {
+      userFriendlyError = 'Redis URL is invalid. Please check REDIS_URL in Vercel environment variables. It must start with redis:// or rediss://.';
+    } else if (errorMessage.includes('connection refused') || errorMessage.includes('ENOTFOUND')) {
+      userFriendlyError = 'Cannot connect to Redis server. Please verify REDIS_URL is correct and Redis database is running.';
+    }
+    
     // Return detailed error for debugging
     return NextResponse.json(
       { 
         success: false, 
-        error: errorMessage,
+        error: userFriendlyError,
         details: process.env.NODE_ENV === 'development' ? {
           hasRedisUrl: !!process.env.REDIS_URL,
+          redisUrlLength: process.env.REDIS_URL?.length || 0,
+          redisUrlPreview: process.env.REDIS_URL ? process.env.REDIS_URL.substring(0, 30) + '...' : 'Not set',
           hasKvUrl: !!process.env.KV_REST_API_URL,
           hasKvToken: !!process.env.KV_REST_API_TOKEN,
         } : undefined
