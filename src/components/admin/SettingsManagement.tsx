@@ -20,13 +20,27 @@ export default function SettingsManagement() {
     carrierLogos: {},
   });
   const [saving, setSaving] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
-    if (serverSettings) {
+    if (serverSettings && initialLoad) {
+      // Chỉ load từ server lần đầu
+      setSettings(serverSettings);
+      setInitialLoad(false);
+      setHasLocalChanges(false);
+    } else if (serverSettings && !hasLocalChanges && !initialLoad) {
+      // Chỉ update từ server nếu không có thay đổi local
       setSettings(serverSettings);
     }
-  }, [serverSettings]);
+  }, [serverSettings, initialLoad, hasLocalChanges]);
+
+  // Wrapper để update settings và track local changes
+  const updateSettings = (updates: Partial<AdminSettings>) => {
+    setSettings(prev => ({ ...prev, ...updates }));
+    setHasLocalChanges(true);
+  };
 
   const handleSave = async () => {
     // Validation
@@ -54,6 +68,7 @@ export default function SettingsManagement() {
       
       if (success) {
         setToast({ message: 'Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.', type: 'success' });
+        setHasLocalChanges(false); // Reset local changes sau khi save thành công
       } else {
         setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
         // Vẫn dispatch event để cập nhật trong tab hiện tại
@@ -175,7 +190,7 @@ export default function SettingsManagement() {
                   <input
                     type="text"
                     value={settings.adminUsername || 'admin'}
-                    onChange={(e) => setSettings({ ...settings, adminUsername: e.target.value })}
+                    onChange={(e) => updateSettings({ adminUsername: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                     placeholder="admin"
                   />
@@ -185,7 +200,7 @@ export default function SettingsManagement() {
                   <input
                     type="password"
                     value={settings.adminPassword || ''}
-                    onChange={(e) => setSettings({ ...settings, adminPassword: e.target.value })}
+                    onChange={(e) => updateSettings({ adminPassword: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                     placeholder="Enter new password"
                   />
@@ -208,7 +223,7 @@ export default function SettingsManagement() {
               <input
                 type="text"
                 value={settings.websiteName || ''}
-                onChange={(e) => setSettings({ ...settings, websiteName: e.target.value })}
+                onChange={(e) => updateSettings({ websiteName: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                 placeholder="US Mobile Networks"
               />
@@ -219,7 +234,7 @@ export default function SettingsManagement() {
                 <input
                   type="email"
                   value={settings.contactEmail || ''}
-                  onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                  onChange={(e) => updateSettings({ contactEmail: e.target.value })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                   placeholder="support@usmobilenetworks.com"
                 />
@@ -229,7 +244,7 @@ export default function SettingsManagement() {
                 <input
                   type="tel"
                   value={settings.contactPhone || ''}
-                  onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+                  onChange={(e) => updateSettings({ contactPhone: e.target.value })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                   placeholder="1-800-456-7890"
                 />
@@ -240,7 +255,7 @@ export default function SettingsManagement() {
               <input
                 type="text"
                 value={settings.address || ''}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                onChange={(e) => updateSettings({ address: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                 placeholder="350 5th Avenue, Suite 7710, New York, NY 10118"
               />
@@ -250,7 +265,7 @@ export default function SettingsManagement() {
               <input
                 type="text"
                 value={settings.businessHours || ''}
-                onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
+                onChange={(e) => updateSettings({ businessHours: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                 placeholder="Monday - Friday: 9:00 AM - 6:00 PM EST"
               />
@@ -270,7 +285,7 @@ export default function SettingsManagement() {
                 type="checkbox"
                 id="paypalEnabled"
                 checked={settings.paypalEnabled || false}
-                onChange={(e) => setSettings({ ...settings, paypalEnabled: e.target.checked })}
+                onChange={(e) => updateSettings({ paypalEnabled: e.target.checked })}
                 className="w-5 h-5"
               />
               <label htmlFor="paypalEnabled" className="font-semibold">Kích Hoạt PayPal</label>
@@ -282,7 +297,7 @@ export default function SettingsManagement() {
                   <input
                     type="text"
                     value={settings.paypalClientId || ''}
-                    onChange={(e) => setSettings({ ...settings, paypalClientId: e.target.value })}
+                    onChange={(e) => updateSettings({ paypalClientId: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                     placeholder="AXv40f7lx9qs6ofAsRzBo_Vdds8pSVsUPfFgLku-sa0iLjnymcthSHXWdDNk5Ns5EH4ic-hYTST_i_Bd"
                   />
@@ -295,7 +310,7 @@ export default function SettingsManagement() {
                   <input
                     type="password"
                     value={settings.paypalClientSecret || ''}
-                    onChange={(e) => setSettings({ ...settings, paypalClientSecret: e.target.value })}
+                    onChange={(e) => updateSettings({ paypalClientSecret: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                     placeholder="Nhập Client Secret từ PayPal Developer Dashboard"
                   />
@@ -308,7 +323,7 @@ export default function SettingsManagement() {
                     <label className="block mb-2 font-semibold">Chế Độ PayPal</label>
                     <select
                       value={settings.paypalMode || 'sandbox'}
-                      onChange={(e) => setSettings({ ...settings, paypalMode: e.target.value as 'sandbox' | 'live' })}
+                      onChange={(e) => updateSettings({ paypalMode: e.target.value as 'sandbox' | 'live' })}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                     >
                       <option value="sandbox">Sandbox (Test)</option>
@@ -322,7 +337,7 @@ export default function SettingsManagement() {
                     <label className="block mb-2 font-semibold">Tiền Tệ</label>
                     <select
                       value={settings.paypalCurrency || 'USD'}
-                      onChange={(e) => setSettings({ ...settings, paypalCurrency: e.target.value })}
+                      onChange={(e) => updateSettings({ paypalCurrency: e.target.value })}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                     >
                       <option value="USD">USD - US Dollar</option>
@@ -339,7 +354,7 @@ export default function SettingsManagement() {
                   <input
                     type="url"
                     value={settings.paypalReturnUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/success' : '/payment/success')}
-                    onChange={(e) => setSettings({ ...settings, paypalReturnUrl: e.target.value })}
+                    onChange={(e) => updateSettings({ paypalReturnUrl: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
                     placeholder="https://yoursite.com/payment/success"
                   />
@@ -352,7 +367,7 @@ export default function SettingsManagement() {
                   <input
                     type="url"
                     value={settings.paypalCancelUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/cancel' : '/payment/cancel')}
-                    onChange={(e) => setSettings({ ...settings, paypalCancelUrl: e.target.value })}
+                    onChange={(e) => updateSettings({ paypalCancelUrl: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
                     placeholder="https://yoursite.com/payment/cancel"
                   />
@@ -408,7 +423,7 @@ export default function SettingsManagement() {
                 type="checkbox"
                 id="cryptoEnabled"
                 checked={settings.cryptoEnabled || false}
-                onChange={(e) => setSettings({ ...settings, cryptoEnabled: e.target.checked })}
+                onChange={(e) => updateSettings({ cryptoEnabled: e.target.checked })}
                 className="w-5 h-5"
               />
               <label htmlFor="cryptoEnabled" className="font-semibold">Kích Hoạt Tiền Điện Tử</label>
@@ -419,7 +434,7 @@ export default function SettingsManagement() {
                   <label className="block mb-2 font-semibold">Cổng Thanh Toán</label>
                   <select
                     value={settings.cryptoGateway || 'manual'}
-                    onChange={(e) => setSettings({ ...settings, cryptoGateway: e.target.value })}
+                    onChange={(e) => updateSettings({ cryptoGateway: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                   >
                     <option value="manual">Thủ Công (Manual)</option>
@@ -442,7 +457,7 @@ export default function SettingsManagement() {
                       <input
                         type="text"
                         value={settings.bitcoinAddress || ''}
-                        onChange={(e) => setSettings({ ...settings, bitcoinAddress: e.target.value })}
+                        onChange={(e) => updateSettings({ bitcoinAddress: e.target.value })}
                         className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                         placeholder="bc1q..."
                       />
@@ -476,7 +491,7 @@ export default function SettingsManagement() {
                         <input
                           type="text"
                           value={settings.ethereumAddress || ''}
-                          onChange={(e) => setSettings({ ...settings, ethereumAddress: e.target.value })}
+                          onChange={(e) => updateSettings({ ethereumAddress: e.target.value })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                           placeholder="0x..."
                         />
@@ -485,7 +500,7 @@ export default function SettingsManagement() {
                         <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
                         <select
                           value={settings.ethereumNetwork || 'ethereum'}
-                          onChange={(e) => setSettings({ ...settings, ethereumNetwork: e.target.value as any })}
+                          onChange={(e) => updateSettings({ ethereumNetwork: e.target.value as any })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                         >
                           <option value="ethereum">ETH - Ethereum (ERC20)</option>
@@ -522,7 +537,7 @@ export default function SettingsManagement() {
                         <input
                           type="text"
                           value={settings.usdtAddress || ''}
-                          onChange={(e) => setSettings({ ...settings, usdtAddress: e.target.value })}
+                          onChange={(e) => updateSettings({ usdtAddress: e.target.value })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                           placeholder="0x... hoặc T..."
                         />
@@ -531,7 +546,7 @@ export default function SettingsManagement() {
                         <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
                         <select
                           value={settings.usdtNetwork || 'tron'}
-                          onChange={(e) => setSettings({ ...settings, usdtNetwork: e.target.value as any })}
+                          onChange={(e) => updateSettings({ usdtNetwork: e.target.value as any })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                         >
                           <option value="tron">TRX - Tron (TRC20)</option>
@@ -567,7 +582,7 @@ export default function SettingsManagement() {
                         <input
                           type="text"
                           value={settings.bnbAddress || ''}
-                          onChange={(e) => setSettings({ ...settings, bnbAddress: e.target.value })}
+                          onChange={(e) => updateSettings({ bnbAddress: e.target.value })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                           placeholder="0x... hoặc bnb..."
                         />
@@ -576,7 +591,7 @@ export default function SettingsManagement() {
                         <label className="block mb-2 font-semibold text-sm">Mạng Lưới (Network)</label>
                         <select
                           value={settings.bnbNetwork || 'bsc'}
-                          onChange={(e) => setSettings({ ...settings, bnbNetwork: e.target.value as any })}
+                          onChange={(e) => updateSettings({ bnbNetwork: e.target.value as any })}
                           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white dark-select"
                         >
                           <option value="bsc">BSC - BNB Smart Chain (BEP20)</option>
@@ -611,7 +626,7 @@ export default function SettingsManagement() {
                   <input
                     type="text"
                     value={settings.apiKey || ''}
-                    onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
+                    onChange={(e) => updateSettings({ apiKey: e.target.value })}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
                   />
                   <small className="text-gray-400 text-sm block mt-1">
@@ -640,7 +655,7 @@ export default function SettingsManagement() {
               <input
                 type="password"
                 value={settings.telegramBotToken || ''}
-                onChange={(e) => setSettings({ ...settings, telegramBotToken: e.target.value })}
+                onChange={(e) => updateSettings({ telegramBotToken: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                 placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
               />
@@ -655,7 +670,7 @@ export default function SettingsManagement() {
               <input
                 type="text"
                 value={settings.telegramChatId || ''}
-                onChange={(e) => setSettings({ ...settings, telegramChatId: e.target.value })}
+                onChange={(e) => updateSettings({ telegramChatId: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
                 placeholder="-1001234567890"
               />
