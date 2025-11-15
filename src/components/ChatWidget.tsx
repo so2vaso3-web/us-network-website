@@ -30,14 +30,15 @@ export default function ChatWidget() {
 
   useEffect(() => {
     // Get or create visitor ID - ĐẢM BẢO KHÔNG THAY ĐỔI
-    if (typeof window !== 'undefined') {
+    // CHỈ chạy 1 lần khi component mount, không cần dependencies
+    if (typeof window !== 'undefined' && !visitorId) {
       let vid = localStorage.getItem('visitorId');
       if (!vid || vid.trim() === '') {
         vid = `visitor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         localStorage.setItem('visitorId', vid);
       }
-      // Chỉ set nếu chưa có hoặc khác
-      if (!visitorId || vid !== visitorId) {
+      // Chỉ set nếu chưa có
+      if (!visitorId) {
         setVisitorId(vid);
       }
 
@@ -64,7 +65,8 @@ export default function ChatWidget() {
         }
       }
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Chỉ chạy 1 lần khi mount, visitorId được set trong effect này
 
   useEffect(() => {
     // Add welcome message when chat opens for first time

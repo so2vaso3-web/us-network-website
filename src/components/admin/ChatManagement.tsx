@@ -36,7 +36,8 @@ export default function ChatManagement() {
     // Polling mỗi 1.5 giây để cập nhật NHANH - nhưng không quá nhiều requests
     const interval = setInterval(loadMessages, 1500);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // loadMessages được định nghĩa trong component, không cần dependency
 
   useEffect(() => {
     if (messagesEndRef.current && selectedConversation) {

@@ -151,7 +151,8 @@ export default function SettingsManagement() {
     }
     // CHỈ chạy khi initialLoad thay đổi từ true -> false
     // KHÔNG phụ thuộc vào serverSettings để tránh reset
-  }, [initialLoad, isLoading]); // BỎ serverSettings, hasLocalChanges khỏi dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoad, isLoading]); // BỎ serverSettings, hasLocalChanges khỏi dependencies - cố ý để tránh reset
 
   // Auto-save function với debounce - ĐẢM BẢO GỬI FULL SETTINGS
   const autoSave = useCallback(async (settingsToSave: AdminSettings) => {
