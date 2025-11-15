@@ -206,12 +206,12 @@ export default function ChatManagement() {
 
   const sendReply = async (conversation: Conversation) => {
     if (!replyText.trim()) {
-      alert('Vui lòng nhập nội dung trả lời!');
+      alert('Please enter a reply message!');
       return;
     }
 
     if (!conversation.visitorId) {
-      alert('Lỗi: Không tìm thấy visitor ID!');
+      alert('Error: Visitor ID not found!');
       return;
     }
 
@@ -227,29 +227,47 @@ export default function ChatManagement() {
     };
 
     const updated = [...allMessages, reply];
-    setAllMessages(updated);
-    localStorage.setItem('chatMessages', JSON.stringify(updated));
     
     // Mark all customer messages in this conversation as read
     const updatedWithRead = updated.map(msg => 
       msg.visitorId === conversation.visitorId && !msg.isAdmin ? { ...msg, read: true } : msg
     );
+    
     setAllMessages(updatedWithRead);
     localStorage.setItem('chatMessages', JSON.stringify(updatedWithRead));
     
+    // Update selected conversation để hiển thị reply ngay
+    if (selectedConversation?.visitorId === conversation.visitorId) {
+      const updatedConvMessages = updatedWithRead.filter(msg => msg.visitorId === conversation.visitorId);
+      setSelectedConversation({
+        ...selectedConversation,
+        messages: updatedConvMessages,
+        lastMessage: reply.message,
+        lastMessageTime: reply.timestamp,
+        unreadCount: 0,
+      });
+    }
+    
     // Save to server
     try {
-      await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: updatedWithRead }),
       });
+      
+      if (!response.ok) {
+        console.error('Failed to save reply to server');
+      }
     } catch (error) {
       console.error('Error saving reply to server:', error);
     }
     
     setReplyText('');
-    loadMessages(); // Reload to update UI
+    // Reload messages để sync với server
+    setTimeout(() => {
+      loadMessages();
+    }, 500);
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -467,21 +485,25 @@ export default function ChatManagement() {
                       sendReply(selectedConversation);
                     }
                   }}
-                  placeholder="Nhập tin nhắn trả lời..."
+                  placeholder="Type your reply message..."
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3 resize-none"
                   rows={3}
                 />
                 <button
-                  onClick={() => sendReply(selectedConversation)}
-                  disabled={!replyText.trim()}
+                  onClick={() => {
+                    if (selectedConversation && replyText.trim()) {
+                      sendReply(selectedConversation);
+                    }
+                  }}
+                  disabled={!replyText.trim() || !selectedConversation}
                   className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                    replyText.trim()
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-blue-500/50'
+                    replyText.trim() && selectedConversation
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-blue-500/50 cursor-pointer'
                       : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
                   <i className="fas fa-paper-plane"></i>
-                  <span>Gửi Trả Lời</span>
+                  <span>Send Reply</span>
                 </button>
               </div>
             </>
