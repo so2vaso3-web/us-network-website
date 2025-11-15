@@ -37,12 +37,12 @@ async function readPackages(): Promise<Package[]> {
       const defaultMap = new Map(defaultPackages.map(p => [p.id, p.price]));
       const storedMap = new Map(packages.map((p: Package) => [p.id, p.price]));
       
-      for (const [id, price] of defaultMap) {
+      // Use Array.from to iterate over Map entries
+      Array.from(defaultMap.entries()).forEach(([id, price]) => {
         if (storedMap.get(id) !== price) {
           shouldUpdate = true;
-          break;
         }
-      }
+      });
     }
     
     if (shouldUpdate) {
