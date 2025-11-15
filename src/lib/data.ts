@@ -115,7 +115,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: 'None',
-    features: ['Unlimited 5G data', 'HD video streaming', 'Save $216/year', 'No contract'],
+    features: ['Unlimited 5G data', 'HD video streaming', 'Unlimited talk & text', 'No contract', 'Save $216/year'],
   },
   {
     id: 'vz-5g-start-year',
@@ -126,7 +126,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '5GB',
-    features: ['Unlimited 5G data', 'HD video streaming', '5GB hotspot', 'Save $252/year'],
+    features: ['Unlimited 5G data', 'HD video streaming', '5GB hotspot', 'Unlimited talk & text', 'No contract', 'Save $252/year'],
   },
   {
     id: 'vz-5g-play-year',
@@ -137,7 +137,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '25GB',
-    features: ['Unlimited 5G data', 'Disney+, Hulu, ESPN+ included', '25GB hotspot', 'Save $276/year'],
+    features: ['Unlimited 5G data', 'Premium network access', 'Disney+, Hulu, ESPN+ included', '25GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $276/year'],
   },
   {
     id: 'vz-5g-get-more-year',
@@ -148,7 +148,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '50GB',
-    features: ['Unlimited 5G data', '50GB hotspot', 'All streaming services', 'Save $324/year'],
+    features: ['Unlimited 5G data', '50GB hotspot', 'Disney+, Hulu, ESPN+ included', 'Apple Music included', 'Premium streaming', 'HD/4K video', 'Unlimited talk & text', 'No contract', 'Save $324/year'],
     badge: 'BEST VALUE',
   },
 
@@ -266,7 +266,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '3GB',
-    features: ['Unlimited 5G data', '3GB hotspot', 'Save $180/year', 'HD streaming'],
+    features: ['Unlimited 5G data', '3GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $180/year'],
   },
   {
     id: 'att-unlimited-starter-year',
@@ -277,7 +277,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '5GB',
-    features: ['Unlimited 5G data', '5GB hotspot', 'Save $228/year', 'HD streaming'],
+    features: ['Unlimited 5G data', '5GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $228/year'],
   },
   {
     id: 'att-unlimited-extra-year',
@@ -288,7 +288,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '15GB',
-    features: ['Unlimited 5G data', '15GB hotspot', 'Save $264/year', 'Premium network'],
+    features: ['Unlimited 5G data', '15GB hotspot', 'Premium network access', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $264/year'],
   },
   {
     id: 'att-unlimited-elite-year',
@@ -299,7 +299,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '40GB',
-    features: ['Unlimited 5G data', '40GB hotspot', 'HBO Max included', 'Save $300/year'],
+    features: ['Unlimited 5G data', '40GB hotspot', 'HBO Max included', 'Premium streaming', 'HD/4K video', 'Unlimited talk & text', 'No contract', 'Save $300/year'],
     badge: 'BEST VALUE',
   },
 
@@ -406,7 +406,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '3GB',
-    features: ['Unlimited 5G data', '3GB hotspot', 'Save $216/year', 'HD streaming'],
+    features: ['Unlimited 5G data', '3GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $216/year'],
   },
   {
     id: 'tm-magenta-year',
@@ -417,7 +417,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '5GB',
-    features: ['Unlimited 5G data', 'Netflix Basic included', 'Save $252/year', '5GB hotspot'],
+    features: ['Unlimited 5G data', 'Netflix Basic included', '5GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $252/year'],
   },
   {
     id: 'tm-magenta-max-year',
@@ -428,7 +428,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '40GB',
-    features: ['Unlimited 5G data', 'Netflix Standard included', '40GB hotspot', 'Save $300/year'],
+    features: ['Unlimited 5G data', 'Netflix Standard included', '40GB hotspot', 'Premium streaming', '4K video', 'Unlimited talk & text', 'No contract', 'Save $300/year'],
     badge: 'BEST VALUE',
   },
 
@@ -524,7 +524,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: 'None',
-    features: ['Unlimited 5G data', 'Save $192/year', 'HD streaming'],
+    features: ['Unlimited 5G data', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $192/year'],
   },
   {
     id: 'usc-everyday-year',
@@ -535,7 +535,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '15GB',
-    features: ['Unlimited 5G data', '15GB hotspot', 'Save $228/year', 'Premium network'],
+    features: ['Unlimited 5G data', '15GB hotspot', 'Premium network access', 'Unlimited talk & text', 'No contract', 'Save $228/year'],
   },
   {
     id: 'usc-even-better-year',
@@ -546,7 +546,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '50GB',
-    features: ['Unlimited 5G data', '50GB hotspot', 'Save $264/year', 'Premium streaming'],
+    features: ['Unlimited 5G data', '50GB hotspot', 'Premium streaming', 'HD/4K video', 'Unlimited talk & text', 'No contract', 'Save $264/year'],
     badge: 'BEST VALUE',
   },
 
@@ -803,7 +803,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '5GB',
-    features: ['Unlimited 5G data', '5GB hotspot', 'Save $192/year', 'HD streaming'],
+    features: ['Unlimited 5G data', '5GB hotspot', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $192/year'],
   },
   {
     id: 'cricket-more-year',
@@ -814,7 +814,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '15GB',
-    features: ['Unlimited 5G data', '15GB hotspot', 'Save $216/year', 'Premium network'],
+    features: ['Unlimited 5G data', '15GB hotspot', 'Premium network access', 'HD streaming', 'Unlimited talk & text', 'No contract', 'Save $216/year'],
   },
   {
     id: 'cricket-most-year',
@@ -825,7 +825,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: '50GB',
-    features: ['Unlimited 5G data', '50GB hotspot', 'Save $228/year', 'Premium streaming'],
+    features: ['Unlimited 5G data', '50GB hotspot', 'Premium streaming', 'HD/4K video', 'Max speeds', 'Unlimited talk & text', 'No contract', 'Save $228/year'],
     badge: 'BEST VALUE',
   },
 ];
