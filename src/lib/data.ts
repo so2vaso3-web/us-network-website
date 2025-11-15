@@ -1,7 +1,7 @@
 import { Package } from '@/types';
 
 export const defaultPackages: Package[] = [
-  // Verizon - Monthly Plans (Giá rẻ hơn 55% so với giá thật)
+  // Verizon - Monthly Plans (Giá rẻ hơn 55% so với giá thật, sắp xếp từ rẻ đến đắt)
   {
     id: 'vz-basic-5g-month',
     carrier: 'verizon',
@@ -11,7 +11,7 @@ export const defaultPackages: Package[] = [
     data: 'Unlimited',
     speed: '5G',
     hotspot: 'None',
-    features: ['Unlimited 5G data', 'HD video streaming', 'Unlimited talk & text', 'No contract', 'Premium network access'],
+    features: ['Unlimited 5G data', 'HD video streaming', 'Unlimited talk & text', 'No contract'],
   },
   {
     id: 'vz-5g-start-month',
@@ -40,12 +40,12 @@ export const defaultPackages: Package[] = [
     id: 'vz-5g-do-more-month',
     carrier: 'verizon',
     name: '5G Do More',
-    price: 23,
+    price: 24,
     period: 'month',
     data: 'Unlimited',
     speed: '5G',
-    hotspot: '25GB',
-    features: ['Unlimited 5G data', '25GB hotspot', '50% off connected devices', 'Premium network access', 'HD streaming'],
+    hotspot: '30GB',
+    features: ['Unlimited 5G data', '30GB hotspot', '50% off connected devices', 'Premium network access', 'HD streaming'],
   },
   {
     id: 'vz-5g-pro-month',
@@ -55,8 +55,8 @@ export const defaultPackages: Package[] = [
     period: 'month',
     data: 'Unlimited',
     speed: '5G',
-    hotspot: '35GB',
-    features: ['Unlimited 5G data', '35GB hotspot', 'Premium network access', 'HD/4K streaming', 'Priority data'],
+    hotspot: '40GB',
+    features: ['Unlimited 5G data', '40GB hotspot', 'Premium network access', 'HD/4K streaming', 'Priority data'],
   },
   {
     id: 'vz-5g-get-more-month',
@@ -81,7 +81,8 @@ export const defaultPackages: Package[] = [
     hotspot: '75GB',
     features: ['Unlimited 5G data', '75GB hotspot', 'All streaming services', '4K video', 'Premium network priority', 'International roaming'],
   },
-  // Verizon - Annual Plans (Giá rẻ hơn 55%)
+  
+  // Verizon - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'vz-basic-5g-year',
     carrier: 'verizon',
@@ -128,7 +129,7 @@ export const defaultPackages: Package[] = [
     badge: 'BEST VALUE',
   },
 
-  // AT&T - Monthly Plans (Giá rẻ hơn 55%)
+  // AT&T - Monthly Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'att-basic-month',
     carrier: 'att',
@@ -208,7 +209,8 @@ export const defaultPackages: Package[] = [
     hotspot: '60GB',
     features: ['Unlimited 5G data', '60GB hotspot', 'HBO Max + Netflix', '4K video', 'Premium network priority', 'International roaming'],
   },
-  // AT&T - Annual Plans (Giá rẻ hơn 55%)
+  
+  // AT&T - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'att-value-plus-year',
     carrier: 'att',
@@ -255,7 +257,7 @@ export const defaultPackages: Package[] = [
     badge: 'BEST VALUE',
   },
 
-  // T-Mobile - Monthly Plans (Giá rẻ hơn 55%)
+  // T-Mobile - Monthly Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'tm-basic-month',
     carrier: 'tmobile',
@@ -324,7 +326,8 @@ export const defaultPackages: Package[] = [
     hotspot: '60GB',
     features: ['Unlimited 5G data', '60GB hotspot', 'Netflix Premium + Apple TV+', '4K video', 'International roaming', 'Premium network priority'],
   },
-  // T-Mobile - Annual Plans (Giá rẻ hơn 55%)
+  
+  // T-Mobile - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'tm-essentials-year',
     carrier: 'tmobile',
@@ -360,7 +363,7 @@ export const defaultPackages: Package[] = [
     badge: 'BEST VALUE',
   },
 
-  // US Cellular - Monthly Plans (Giá rẻ hơn 55%)
+  // US Cellular - Monthly Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'usc-basic-month',
     carrier: 'uscellular',
@@ -418,7 +421,8 @@ export const defaultPackages: Package[] = [
     hotspot: '75GB',
     features: ['Unlimited 5G data', '75GB hotspot', 'Premium streaming', '4K video', 'Priority data', 'International features'],
   },
-  // US Cellular - Annual Plans (Giá rẻ hơn 55%)
+  
+  // US Cellular - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'usc-basic-year',
     carrier: 'uscellular',
@@ -454,7 +458,7 @@ export const defaultPackages: Package[] = [
     badge: 'BEST VALUE',
   },
 
-  // Mint Mobile - Monthly Plans (Giá rẻ hơn 55%)
+  // Mint Mobile - Monthly Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt, data limited)
   {
     id: 'mint-3gb-month',
     carrier: 'mintmobile',
@@ -470,7 +474,7 @@ export const defaultPackages: Package[] = [
     id: 'mint-5gb-month',
     carrier: 'mintmobile',
     name: '5GB Plan',
-    price: 5,
+    price: 6,
     period: 'month',
     data: '5GB',
     speed: '5G',
@@ -492,12 +496,12 @@ export const defaultPackages: Package[] = [
     id: 'mint-15gb-month',
     carrier: 'mintmobile',
     name: '15GB Plan',
-    price: 7,
+    price: 8,
     period: 'month',
     data: '15GB',
     speed: '5G',
-    hotspot: '5GB',
-    features: ['15GB high-speed data', '5G included', 'Unlimited talk & text', '5GB mobile hotspot'],
+    hotspot: '10GB',
+    features: ['15GB high-speed data', '5G included', 'Unlimited talk & text', '10GB mobile hotspot'],
   },
   {
     id: 'mint-20gb-month',
@@ -533,7 +537,8 @@ export const defaultPackages: Package[] = [
     hotspot: '20GB',
     features: ['Unlimited high-speed data', '20GB hotspot', '5G included', 'HD/4K streaming', 'Premium network access'],
   },
-  // Mint Mobile - Annual Plans (Giá rẻ hơn 55%)
+  
+  // Mint Mobile - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'mint-5gb-year',
     carrier: 'mintmobile',
@@ -553,8 +558,8 @@ export const defaultPackages: Package[] = [
     period: 'year',
     data: '15GB',
     speed: '5G',
-    hotspot: '5GB',
-    features: ['15GB high-speed data', '5G included', 'Save $84/year', '5GB mobile hotspot'],
+    hotspot: '10GB',
+    features: ['15GB high-speed data', '5G included', 'Save $84/year', '10GB mobile hotspot'],
   },
   {
     id: 'mint-20gb-year',
@@ -591,7 +596,7 @@ export const defaultPackages: Package[] = [
     features: ['Unlimited high-speed data', '20GB hotspot', 'Save $144/year', 'Premium network'],
   },
 
-  // Cricket Wireless - Monthly Plans (Giá rẻ hơn 55%)
+  // Cricket Wireless - Monthly Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'cricket-basic-month',
     carrier: 'cricket',
@@ -649,7 +654,8 @@ export const defaultPackages: Package[] = [
     hotspot: '75GB',
     features: ['Unlimited 5G data', '75GB hotspot', 'Premium streaming', '4K video', 'Priority data', 'International features'],
   },
-  // Cricket Wireless - Annual Plans (Giá rẻ hơn 55%)
+  
+  // Cricket Wireless - Annual Plans (Giá rẻ hơn 55%, sắp xếp từ rẻ đến đắt)
   {
     id: 'cricket-core-year',
     carrier: 'cricket',
