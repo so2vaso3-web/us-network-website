@@ -27,11 +27,12 @@ export default function SettingsManagement() {
   const isAutoSavingRef = useRef(false);
 
   useEffect(() => {
+    // CHỈ chạy 1 LẦN DUY NHẤT khi component mount
+    // KHÔNG phụ thuộc vào serverSettings để tránh reset
     if (initialLoad && !isLoading) {
-      // Tự động restore từ localStorage nếu server settings rỗng
       const autoRestore = async () => {
         try {
-          // BƯỚC 1: Ưu tiên load từ localStorage trước (nếu có) để giữ lại tất cả settings đã lưu
+          // BƯỚC 1: Ưu tiên load từ localStorage trước (SOURCE OF TRUTH)
           let localSettingsData: Partial<AdminSettings> | null = null;
           if (typeof window !== 'undefined') {
             const localSettings = localStorage.getItem('adminSettings');
@@ -61,21 +62,15 @@ export default function SettingsManagement() {
             
             if (hasLocalData) {
               console.log('🔄 Tự động restore settings từ localStorage...');
-              // Restore lên server
               const success = await saveSettingsToServer(localSettingsData);
               if (success) {
                 console.log('✅ Đã tự động restore settings lên server!');
-                // Reload để lấy settings mới từ server
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500);
-                return;
+                // KHÔNG reload để tránh mất user input
               }
             }
           }
           
-          // BƯỚC 4: Merge settings - ƯU TIÊN giữ lại tất cả values đã có
-          // Tạo default settings base
+          // BƯỚC 4: Merge settings - localStorage là SOURCE OF TRUTH
           const defaultSettings: AdminSettings = {
             websiteName: 'US Mobile Networks',
             paypalEnabled: true,
@@ -89,12 +84,10 @@ export default function SettingsManagement() {
             carrierLogos: {},
           };
           
-          // Merge theo thứ tự: localStorage (ưu tiên cao nhất) -> server settings -> defaults
           let mergedSettings: AdminSettings;
           
           if (localSettingsData) {
-            // Có localStorage: merge localStorage -> server -> default
-            // Validate enum fields
+            // Có localStorage: DÙNG localStorage làm base, chỉ merge server nếu thiếu
             const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
               ? localSettingsData.paypalMode 
               : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
@@ -106,16 +99,16 @@ export default function SettingsManagement() {
                   ? serverSettings.cryptoGateway 
                   : 'manual');
             
+            // Merge: localStorage (ưu tiên) -> server (chỉ fill missing) -> default
             mergedSettings = {
               ...defaultSettings,
-              ...serverSettings, // Server settings (nếu có)
+              ...serverSettings, // Server settings (fill missing)
               ...localSettingsData, // localStorage OVERRIDE tất cả (ưu tiên cao nhất)
-              // Validate và đảm bảo enum fields
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             };
           } else if (hasServerData && serverSettings) {
-            // Không có localStorage, nhưng có server settings
+            // Không có localStorage, dùng server
             const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
               ? serverSettings.paypalMode 
               : 'sandbox';
@@ -125,12 +118,11 @@ export default function SettingsManagement() {
             
             mergedSettings = {
               ...defaultSettings,
-              ...serverSettings, // Server settings override defaults
+              ...serverSettings,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             };
           } else {
-            // Không có gì, dùng default
             mergedSettings = defaultSettings;
           }
           
@@ -149,9 +141,9 @@ export default function SettingsManagement() {
       
       autoRestore();
     }
-    // KHÔNG tự động merge từ server nữa - chỉ dùng khi initial load
-    // Để tránh server polling overwrite user input
-  }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
+    // CHỈ chạy khi initialLoad thay đổi từ true -> false
+    // KHÔNG phụ thuộc vào serverSettings để tránh reset
+  }, [initialLoad, isLoading]); // BỎ serverSettings, hasLocalChanges khỏi dependencies
 
   // Auto-save function với debounce - ĐẢM BẢO GỬI FULL SETTINGS
   const autoSave = useCallback(async (settingsToSave: AdminSettings) => {

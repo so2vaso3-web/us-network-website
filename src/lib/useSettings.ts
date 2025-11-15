@@ -80,15 +80,15 @@ export function useSettings() {
     // Load settings lần đầu
     loadSettings();
 
-    // Polling: Tự động fetch mỗi 30 giây để cập nhật real-time (tăng lên để tránh conflict với user input)
-    // CHỈ fetch, không tự động merge - để tránh overwrite user input
+    // Polling: Tự động fetch mỗi 60 giây để cập nhật real-time
+    // CHỈ fetch vào localStorage, KHÔNG update state - để tránh overwrite user input
     pollInterval = setInterval(async () => {
       if (isMounted) {
-        // Chỉ fetch, không tự động update state
+        // Chỉ fetch và lưu vào localStorage, KHÔNG update state
         // State sẽ chỉ update khi có event 'settingsUpdated' từ tab khác
         await fetchSettingsFromServer();
       }
-    }, 30000); // 30 giây - giảm tần suất để tránh conflict
+    }, 60000); // 60 giây - tăng lên để tránh conflict với user input
 
     // Lắng nghe event khi admin cập nhật settings (để cập nhật ngay lập tức)
     const handleSettingsUpdated = () => {

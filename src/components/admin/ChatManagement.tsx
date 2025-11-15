@@ -33,8 +33,8 @@ export default function ChatManagement() {
 
   useEffect(() => {
     loadMessages();
-    // Polling mỗi 1 giây để cập nhật NHANH HƠN - khách nhắn tới hiển thị ngay
-    const interval = setInterval(loadMessages, 1000);
+    // Polling mỗi 1.5 giây để cập nhật NHANH - nhưng không quá nhiều requests
+    const interval = setInterval(loadMessages, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -111,7 +111,20 @@ export default function ChatManagement() {
       
       if (messages.length > 0) {
         try {
-          setAllMessages(messages);
+          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết
+          setAllMessages(prev => {
+            // So sánh để tránh update không cần thiết
+            if (prev.length === messages.length) {
+              const hasChanges = prev.some((p, idx) => {
+                const curr = messages[idx];
+                return !curr || p.id !== curr.id || p.message !== curr.message || p.timestamp !== curr.timestamp;
+              });
+              if (!hasChanges) {
+                return prev; // Không có thay đổi, giữ nguyên
+              }
+            }
+            return messages; // Có thay đổi, update
+          });
 
           // Group messages by visitorId
           const conversationMap = new Map<string, Conversation>();
@@ -150,25 +163,55 @@ export default function ChatManagement() {
             new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
           );
           
-          setConversations(convs);
+          // CHỈ update nếu có thay đổi
+          setConversations(prev => {
+            if (prev.length === convs.length) {
+              const hasChanges = prev.some((p, idx) => {
+                const curr = convs[idx];
+                return !curr || p.visitorId !== curr.visitorId || p.lastMessage !== curr.lastMessage || p.unreadCount !== curr.unreadCount;
+              });
+              if (!hasChanges) {
+                return prev; // Không có thay đổi, giữ nguyên
+              }
+            }
+            return convs; // Có thay đổi, update
+          });
           
           // Update selected conversation nếu đang mở
           if (selectedConversation) {
             const updatedConv = convs.find(c => c.visitorId === selectedConversation.visitorId);
             if (updatedConv) {
-              setSelectedConversation(updatedConv);
+              // CHỈ update nếu có thay đổi
+              setSelectedConversation(prev => {
+                if (prev && prev.messages.length === updatedConv.messages.length) {
+                  const hasChanges = prev.messages.some((p, idx) => {
+                    const curr = updatedConv.messages[idx];
+                    return !curr || p.id !== curr.id || p.message !== curr.message;
+                  });
+                  if (!hasChanges) {
+                    return prev; // Không có thay đổi, giữ nguyên
+                  }
+                }
+                return updatedConv; // Có thay đổi, update
+              });
             }
           }
         } catch (e) {
           console.error('Error processing messages:', e);
           // KHÔNG clear messages nếu có lỗi, giữ lại để không mất
-          // setAllMessages([]);
-          // setConversations([]);
         }
       } else {
-        // Chỉ clear nếu thực sự không có messages
-        setAllMessages([]);
-        setConversations([]);
+        // Chỉ clear nếu thực sự không có messages VÀ không có trong localStorage
+        if (typeof window !== 'undefined') {
+          const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+          if (localMessages.length === 0) {
+            setAllMessages([]);
+            setConversations([]);
+          }
+        } else {
+          setAllMessages([]);
+          setConversations([]);
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error);
