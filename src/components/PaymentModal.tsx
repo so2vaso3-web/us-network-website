@@ -91,23 +91,39 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     }
   }, [paymentMethod, selectedCrypto, step, checkCryptoAddress]);
 
-  // Also listen for localStorage changes (when admin updates settings)
+  // Listen for settings updates from server (Vercel KV) and localStorage changes
   useEffect(() => {
-    if (paymentMethod === 'crypto' && step === 'payment-method' && typeof window !== 'undefined') {
-      const handleStorageChange = () => {
-        const hasAddress = checkCryptoAddress();
-        setHasCryptoAddress(hasAddress);
+    if (typeof window !== 'undefined') {
+      // Listen for custom event when settings are updated from server
+      const handleSettingsUpdated = (event: any) => {
+        // Force re-check crypto address when settings update
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
       };
       
+      // Listen for localStorage changes (when admin updates settings in same tab)
+      const handleStorageChange = () => {
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
+      };
+      
+      window.addEventListener('settingsUpdated', handleSettingsUpdated as EventListener);
       window.addEventListener('storage', handleStorageChange);
       
       // Also check periodically in case settings are updated in the same tab
       const interval = setInterval(() => {
-        const hasAddress = checkCryptoAddress();
-        setHasCryptoAddress(hasAddress);
-      }, 500);
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
+      }, 1000); // Check every 1 second
       
       return () => {
+        window.removeEventListener('settingsUpdated', handleSettingsUpdated as EventListener);
         window.removeEventListener('storage', handleStorageChange);
         clearInterval(interval);
       };

@@ -36,11 +36,14 @@ export function useSettings() {
             return prev;
           });
           
-          // Luôn lưu vào localStorage để cache (nhưng không update state)
+          // Luôn lưu vào localStorage để cache (cho PaymentModal và các component khác)
+          // Server (Vercel KV) là source of truth, localStorage là cache
           if (typeof window !== 'undefined') {
             const serverTimestamp = data.timestamp || new Date().toISOString();
             localStorage.setItem('adminSettings', JSON.stringify(data.settings));
             localStorage.setItem('settingsLastUpdate', serverTimestamp);
+            // Dispatch event để PaymentModal biết settings đã update
+            window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data.settings }));
           }
           
           return true;

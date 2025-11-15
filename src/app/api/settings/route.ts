@@ -5,25 +5,28 @@ const STORAGE_KEY = 'adminSettings';
 
 async function readSettings(): Promise<any> {
   try {
+    // ƯU TIÊN load từ Vercel KV trước (persistent storage)
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      try {
+        const { kv } = require('@vercel/kv');
+        const kvSettings = await kv.get(STORAGE_KEY);
+        if (kvSettings && typeof kvSettings === 'object') {
+          // Update cache và return
+          storage.set(STORAGE_KEY, kvSettings);
+          return kvSettings;
+        }
+      } catch (e) {
+        console.error('Error loading from Vercel KV:', e);
+      }
+    }
+    
+    // Fallback: Load từ storage (file system hoặc in-memory)
     let settings = storage.get(STORAGE_KEY);
     // Nếu là Promise (từ KV adapter), await nó
     if (settings instanceof Promise) {
       settings = await settings;
     }
-    // Nếu là VercelKVAdapter, load từ KV vào cache trước
-    if (settings === null && process.env.KV_REST_API_URL) {
-      // Thử load từ KV
-      try {
-        const { kv } = require('@vercel/kv');
-        settings = await kv.get(STORAGE_KEY);
-        if (settings) {
-          // Update cache
-          storage.set(STORAGE_KEY, settings);
-        }
-      } catch (e) {
-        // Ignore
-      }
-    }
+    
     if (settings && typeof settings === 'object') {
       return settings;
     }
@@ -35,19 +38,25 @@ async function readSettings(): Promise<any> {
 
 async function saveSettings(settings: any): Promise<void> {
   try {
-    // Lưu vào storage (local hoặc file system)
-    storage.set(STORAGE_KEY, settings);
-    
-    // Lưu lên Vercel KV nếu có (để đảm bảo persistent)
+    // ƯU TIÊN lưu lên Vercel KV trước (persistent storage)
     if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       try {
         const { kv } = require('@vercel/kv');
         await kv.set(STORAGE_KEY, settings);
-        console.log('Settings saved to Vercel KV');
+        console.log('✅ Settings saved to Vercel KV (persistent)');
+        
+        // Sau khi lưu KV thành công, update cache
+        storage.set(STORAGE_KEY, settings);
       } catch (e) {
-        console.error('Error saving settings to KV:', e);
-        // Không throw error, vì đã lưu vào storage rồi
+        console.error('❌ Error saving settings to KV:', e);
+        // Fallback: Lưu vào storage nếu KV fail
+        storage.set(STORAGE_KEY, settings);
+        throw e; // Throw để caller biết có lỗi
       }
+    } else {
+      // Không có KV, chỉ lưu vào storage (file system hoặc in-memory)
+      storage.set(STORAGE_KEY, settings);
+      console.log('⚠️ Settings saved to local storage (Vercel KV not configured)');
     }
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -129,4 +138,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

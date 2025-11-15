@@ -32,7 +32,13 @@ export default function SettingsManagement() {
     if (initialLoad && !isLoading) {
       const autoRestore = async () => {
         try {
-          // BƯỚC 1: Ưu tiên load từ localStorage trước (SOURCE OF TRUTH)
+          // BƯỚC 1: Ưu tiên load từ SERVER (Vercel KV) trước - PERSISTENT STORAGE
+          const hasServerData = serverSettings && Object.keys(serverSettings).length > 0 && 
+            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.paypalClientSecret || 
+             serverSettings.telegramBotToken || serverSettings.paypalEnabled !== undefined || 
+             serverSettings.cryptoEnabled !== undefined);
+          
+          // BƯỚC 2: Load từ localStorage (fallback/cache)
           let localSettingsData: Partial<AdminSettings> | null = null;
           if (typeof window !== 'undefined') {
             const localSettings = localStorage.getItem('adminSettings');
@@ -48,29 +54,35 @@ export default function SettingsManagement() {
             }
           }
           
-          // BƯỚC 2: Kiểm tra server settings có data không
-          const hasServerData = serverSettings && Object.keys(serverSettings).length > 0 && 
-            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.paypalClientSecret || 
-             serverSettings.telegramBotToken || serverSettings.paypalEnabled !== undefined || 
-             serverSettings.cryptoEnabled !== undefined);
-          
-          // BƯỚC 3: Nếu server không có data nhưng localStorage có, restore lên server
+          // BƯỚC 3: Nếu server không có data nhưng localStorage có, restore lên server (Vercel KV)
           if (!hasServerData && localSettingsData) {
             const hasLocalData = localSettingsData.websiteName || localSettingsData.paypalClientId || 
               localSettingsData.paypalClientSecret || localSettingsData.telegramBotToken ||
               localSettingsData.paypalEnabled !== undefined || localSettingsData.cryptoEnabled !== undefined;
             
             if (hasLocalData) {
-              console.log('🔄 Tự động restore settings từ localStorage...');
+              console.log('🔄 Tự động restore settings từ localStorage lên Vercel KV...');
               const success = await saveSettingsToServer(localSettingsData);
               if (success) {
-                console.log('✅ Đã tự động restore settings lên server!');
-                // KHÔNG reload để tránh mất user input
+                console.log('✅ Đã tự động restore settings lên Vercel KV (persistent)!');
+                // Reload server settings sau khi restore
+                setTimeout(async () => {
+                  const response = await fetch(`/api/settings?t=${Date.now()}`, {
+                    headers: { 'Cache-Control': 'no-cache' },
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.settings) {
+                      // Update state với server settings mới
+                      setSettings(prev => ({ ...prev, ...data.settings }));
+                    }
+                  }
+                }, 500);
               }
             }
           }
           
-          // BƯỚC 4: Merge settings - localStorage là SOURCE OF TRUTH
+          // BƯỚC 4: Merge settings - SERVER (Vercel KV) là SOURCE OF TRUTH, localStorage là cache
           const defaultSettings: AdminSettings = {
             websiteName: 'US Mobile Networks',
             paypalEnabled: true,
@@ -86,29 +98,8 @@ export default function SettingsManagement() {
           
           let mergedSettings: AdminSettings;
           
-          if (localSettingsData) {
-            // Có localStorage: DÙNG localStorage làm base, chỉ merge server nếu thiếu
-            const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
-              ? localSettingsData.paypalMode 
-              : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
-                  ? serverSettings.paypalMode 
-                  : 'sandbox');
-            const validCryptoGateway = (localSettingsData.cryptoGateway === 'manual' || localSettingsData.cryptoGateway === 'bitpay') 
-              ? localSettingsData.cryptoGateway 
-              : ((serverSettings?.cryptoGateway === 'manual' || serverSettings?.cryptoGateway === 'bitpay') 
-                  ? serverSettings.cryptoGateway 
-                  : 'manual');
-            
-            // Merge: localStorage (ưu tiên) -> server (chỉ fill missing) -> default
-            mergedSettings = {
-              ...defaultSettings,
-              ...serverSettings, // Server settings (fill missing)
-              ...localSettingsData, // localStorage OVERRIDE tất cả (ưu tiên cao nhất)
-              paypalMode: validPaypalMode,
-              cryptoGateway: validCryptoGateway,
-            };
-          } else if (hasServerData && serverSettings) {
-            // Không có localStorage, dùng server
+          if (hasServerData && serverSettings) {
+            // Có server settings (Vercel KV): DÙNG server làm base, merge localStorage nếu thiếu
             const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
               ? serverSettings.paypalMode 
               : 'sandbox';
@@ -116,9 +107,26 @@ export default function SettingsManagement() {
               ? serverSettings.cryptoGateway 
               : 'manual';
             
+            // Merge: server (ưu tiên) -> localStorage (fill missing) -> default
             mergedSettings = {
               ...defaultSettings,
-              ...serverSettings,
+              ...localSettingsData, // localStorage fill missing
+              ...serverSettings, // Server settings OVERRIDE (ưu tiên cao nhất - từ Vercel KV)
+              paypalMode: validPaypalMode,
+              cryptoGateway: validCryptoGateway,
+            };
+          } else if (localSettingsData) {
+            // Không có server, dùng localStorage
+            const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
+              ? localSettingsData.paypalMode 
+              : 'sandbox';
+            const validCryptoGateway = (localSettingsData.cryptoGateway === 'manual' || localSettingsData.cryptoGateway === 'bitpay') 
+              ? localSettingsData.cryptoGateway 
+              : 'manual';
+            
+            mergedSettings = {
+              ...defaultSettings,
+              ...localSettingsData,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             };
@@ -127,7 +135,7 @@ export default function SettingsManagement() {
           }
           
           setSettings(mergedSettings);
-          // Lưu vào localStorage để đảm bảo đồng bộ
+          // Lưu vào localStorage để cache (nhưng server là source of truth)
           if (typeof window !== 'undefined') {
             localStorage.setItem('adminSettings', JSON.stringify(mergedSettings));
           }
