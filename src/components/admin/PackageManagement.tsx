@@ -161,6 +161,7 @@ export default function PackageManagement() {
     savePackages(updated);
     setShowForm(false);
     setEditingPackage(null);
+    setHasLocalChanges(false); // Reset local changes sau khi save
   };
 
   const carriers = ['verizon', 'att', 'tmobile', 'uscellular', 'mintmobile', 'cricket'];
