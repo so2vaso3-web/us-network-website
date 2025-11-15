@@ -29,14 +29,17 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Get or create visitor ID
+    // Get or create visitor ID - ĐẢM BẢO KHÔNG THAY ĐỔI
     if (typeof window !== 'undefined') {
       let vid = localStorage.getItem('visitorId');
-      if (!vid) {
+      if (!vid || vid.trim() === '') {
         vid = `visitor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         localStorage.setItem('visitorId', vid);
       }
-      setVisitorId(vid);
+      // Chỉ set nếu chưa có hoặc khác
+      if (!visitorId || vid !== visitorId) {
+        setVisitorId(vid);
+      }
 
       // Load messages for this visitor
       const savedMessages = localStorage.getItem('chatMessages');
@@ -111,18 +114,36 @@ export default function ChatWidget() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.messages)) {
-            // Update localStorage
-            localStorage.setItem('chatMessages', JSON.stringify(data.messages));
+            // MERGE với localStorage để không mất messages
+            const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+            const serverMessages = data.messages;
+            
+            // Merge: Ưu tiên server, nhưng giữ lại messages local nếu server không có
+            const messageMap = new Map<string, Message>();
+            
+            // Thêm messages từ server trước (ưu tiên)
+            serverMessages.forEach((m: Message) => {
+              messageMap.set(m.id, m);
+            });
+            
+            // Thêm messages từ local nếu chưa có trong server (fallback)
+            localMessages.forEach((m: Message) => {
+              if (m.visitorId === visitorId && !messageMap.has(m.id)) {
+                messageMap.set(m.id, m);
+              }
+            });
+            
+            // Convert map to array và update localStorage
+            const mergedMessages = Array.from(messageMap.values());
+            localStorage.setItem('chatMessages', JSON.stringify(mergedMessages));
             
             // Filter messages for this visitor và đảm bảo isAdmin đúng
-            const visitorMessages = data.messages
+            const visitorMessages = mergedMessages
               .filter((m: Message) => m.visitorId === visitorId)
               .map((m: Message) => {
                 // Đảm bảo logic isAdmin đúng:
                 // - Nếu message có name là 'Admin' hoặc 'Support Team' → isAdmin: true
                 // - Nếu message có name khác → isAdmin: false (khách hàng)
-                // - Nếu message đã có isAdmin: true và name là Admin/Support Team → giữ nguyên
-                // - Nếu message có visitorId và name không phải Admin/Support Team → isAdmin: false
                 const isAdminMessage = m.name === 'Admin' || m.name === 'Support Team';
                 return {
                   ...m,
@@ -130,7 +151,7 @@ export default function ChatWidget() {
                 };
               });
             
-            // Always update messages từ server để đảm bảo sync
+            // Always update messages từ merged data để đảm bảo sync
             setMessages(prevMessages => {
               // Check if there are new messages (admin replies)
               const currentMessageIds = new Set(prevMessages.map(m => m.id));
@@ -146,7 +167,7 @@ export default function ChatWidget() {
                 }
               }
               
-              // LUÔN update từ server để đảm bảo sync đúng
+              // LUÔN update từ merged data để đảm bảo sync đúng
               // Sort by timestamp để đảm bảo thứ tự đúng
               const sorted = [...visitorMessages].sort((a, b) => 
                 new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -157,9 +178,21 @@ export default function ChatWidget() {
           }
         } else {
           console.error('Failed to load messages:', response.status, response.statusText);
+          // Fallback: Load từ localStorage nếu server fail
+          const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+          const visitorMessages = localMessages.filter((m: Message) => m.visitorId === visitorId);
+          if (visitorMessages.length > 0) {
+            setMessages(visitorMessages);
+          }
         }
       } catch (error) {
         console.error('Error loading messages from server:', error);
+        // Fallback: Load từ localStorage nếu có lỗi
+        const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        const visitorMessages = localMessages.filter((m: Message) => m.visitorId === visitorId);
+        if (visitorMessages.length > 0) {
+          setMessages(visitorMessages);
+        }
       }
     };
 
