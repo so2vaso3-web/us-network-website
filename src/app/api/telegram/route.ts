@@ -51,6 +51,11 @@ async function sendToTelegram(
   message: string
 ): Promise<boolean> {
   try {
+    if (!botToken || !chatId) {
+      console.error('Missing Telegram credentials:', { hasToken: !!botToken, hasChatId: !!chatId });
+      return false;
+    }
+    
     const url = `${TELEGRAM_API_URL}${botToken}/sendMessage`;
     const response = await fetch(url, {
       method: 'POST',
@@ -65,7 +70,19 @@ async function sendToTelegram(
     });
 
     const data = await response.json();
-    return response.ok && data.ok;
+    
+    if (!response.ok || !data.ok) {
+      console.error('Telegram API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: data.description || data.error_code || 'Unknown error',
+        data,
+      });
+      return false;
+    }
+    
+    console.log('Telegram message sent successfully to chat:', chatId);
+    return true;
   } catch (error) {
     console.error('Error sending to Telegram:', error);
     return false;
@@ -131,6 +148,13 @@ ${messageText}
     }
 
     // Send to Telegram
+    console.log('Sending to Telegram:', {
+      botToken: telegramSettings.botToken ? `${telegramSettings.botToken.substring(0, 10)}...` : 'missing',
+      chatId: telegramSettings.chatId,
+      isReply,
+      messageLength: telegramMessage.length,
+    });
+    
     const success = await sendToTelegram(
       telegramSettings.botToken,
       telegramSettings.chatId,
@@ -138,13 +162,15 @@ ${messageText}
     );
 
     if (success) {
+      console.log('Telegram message sent successfully');
       return NextResponse.json({
         success: true,
         message: 'Message sent to Telegram successfully',
       });
     } else {
+      console.error('Failed to send message to Telegram');
       return NextResponse.json(
-        { success: false, error: 'Failed to send message to Telegram' },
+        { success: false, error: 'Failed to send message to Telegram. Check bot token and chat ID.' },
         { status: 500 }
       );
     }

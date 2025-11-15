@@ -93,9 +93,9 @@ export default function ChatWidget() {
     }
   }, [messages, isOpen, isMinimized]);
 
-  // Polling để nhận reply từ admin
+  // Polling để nhận reply từ admin - chạy cả khi chat đóng để nhận notification
   useEffect(() => {
-    if (!visitorId || !isOpen) return;
+    if (!visitorId) return;
 
     const loadMessagesFromServer = async () => {
       try {
@@ -117,26 +117,39 @@ export default function ChatWidget() {
             // Filter messages for this visitor
             const visitorMessages = data.messages.filter((m: Message) => m.visitorId === visitorId);
             
-            // Check if there are new messages (admin replies)
+            // Always update messages để sync với server
             setMessages(prevMessages => {
+              // Check if there are new messages (admin replies)
               const currentMessageIds = new Set(prevMessages.map(m => m.id));
               const newMessages = visitorMessages.filter((m: Message) => !currentMessageIds.has(m.id));
               
               if (newMessages.length > 0) {
-                // Show notification if chat is minimized
-                if (isMinimized) {
+                // Show notification if chat is minimized or closed
+                if (isMinimized || !isOpen) {
                   setToast({ 
                     message: `You have ${newMessages.length} new message(s)`, 
                     type: 'info' 
                   });
                 }
                 return visitorMessages;
-              } else {
-                // Update messages even if no new ones (to sync)
+              }
+              
+              // Update messages even if no new ones (to sync) - nhưng chỉ nếu có thay đổi
+              if (prevMessages.length !== visitorMessages.length) {
                 return visitorMessages;
               }
+              
+              // Check if message content changed
+              const hasChanges = prevMessages.some((prev, idx) => {
+                const curr = visitorMessages[idx];
+                return !curr || prev.id !== curr.id || prev.message !== curr.message;
+              });
+              
+              return hasChanges ? visitorMessages : prevMessages;
             });
           }
+        } else {
+          console.error('Failed to load messages:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Error loading messages from server:', error);
@@ -146,7 +159,7 @@ export default function ChatWidget() {
     // Load immediately
     loadMessagesFromServer();
 
-    // Poll every 2 seconds when chat is open
+    // Poll every 2 seconds (chạy cả khi chat đóng để nhận notification)
     const interval = setInterval(loadMessagesFromServer, 2000);
     return () => clearInterval(interval);
   }, [visitorId, isOpen, isMinimized]);
