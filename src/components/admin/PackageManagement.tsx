@@ -73,7 +73,9 @@ export default function PackageManagement() {
 
   useEffect(() => {
     loadPackages(true); // Force load lần đầu
-    
+  }, []); // Chỉ chạy 1 lần khi mount
+
+  useEffect(() => {
     // Lắng nghe event khi packages được cập nhật từ nơi khác (chỉ khi không có local changes)
     const handlePackagesUpdated = () => {
       if (!hasLocalChanges && !showForm) {
@@ -85,7 +87,7 @@ export default function PackageManagement() {
     return () => {
       window.removeEventListener('packagesUpdated', handlePackagesUpdated);
     };
-  }, []); // Chỉ chạy 1 lần khi mount
+  }, [hasLocalChanges, showForm]); // Re-register listener khi hasLocalChanges hoặc showForm thay đổi
 
   const savePackages = async (updatedPackages: Package[]) => {
     setPackages(updatedPackages);
