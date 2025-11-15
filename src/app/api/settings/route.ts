@@ -33,9 +33,22 @@ async function readSettings(): Promise<any> {
   return {};
 }
 
-function saveSettings(settings: any): void {
+async function saveSettings(settings: any): Promise<void> {
   try {
+    // Lưu vào storage (local hoặc file system)
     storage.set(STORAGE_KEY, settings);
+    
+    // Lưu lên Vercel KV nếu có (để đảm bảo persistent)
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      try {
+        const { kv } = require('@vercel/kv');
+        await kv.set(STORAGE_KEY, settings);
+        console.log('Settings saved to Vercel KV');
+      } catch (e) {
+        console.error('Error saving settings to KV:', e);
+        // Không throw error, vì đã lưu vào storage rồi
+      }
+    }
   } catch (error) {
     console.error('Error saving settings:', error);
     throw error;
@@ -83,7 +96,7 @@ export async function POST(request: NextRequest) {
       emailNotifications: settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false),
     };
 
-    saveSettings(updatedSettings);
+    await saveSettings(updatedSettings);
     
     return NextResponse.json({ 
       success: true, 

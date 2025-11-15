@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminSettings } from '@/types';
 import { useSettings, saveSettingsToServer, notifySettingsUpdated } from '@/lib/useSettings';
 import Toast from '@/components/Toast';
@@ -23,6 +23,8 @@ export default function SettingsManagement() {
   const [hasLocalChanges, setHasLocalChanges] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isAutoSavingRef = useRef(false);
 
   useEffect(() => {
     if (initialLoad && !isLoading) {
@@ -185,10 +187,52 @@ export default function SettingsManagement() {
     }
   }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
 
-  // Wrapper để update settings và track local changes
+  // Auto-save function với debounce
+  const autoSave = useCallback(async (settingsToSave: AdminSettings) => {
+    if (isAutoSavingRef.current) return;
+    
+    isAutoSavingRef.current = true;
+    try {
+      // Lưu vào localStorage ngay lập tức (backup)
+      localStorage.setItem('adminSettings', JSON.stringify(settingsToSave));
+      localStorage.setItem('settingsLastUpdate', new Date().toISOString());
+      
+      // Lưu lên server (và Vercel KV nếu có)
+      const success = await saveSettingsToServer(settingsToSave);
+      
+      if (success) {
+        setHasLocalChanges(false);
+        // Không hiển thị toast để không làm phiền user
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    } finally {
+      isAutoSavingRef.current = false;
+    }
+  }, []);
+
+  // Wrapper để update settings và auto-save
   const updateSettings = (updates: Partial<AdminSettings>) => {
-    setSettings(prev => ({ ...prev, ...updates }));
-    setHasLocalChanges(true);
+    setSettings(prev => {
+      const newSettings = { ...prev, ...updates };
+      
+      // Lưu vào localStorage ngay lập tức (backup)
+      localStorage.setItem('adminSettings', JSON.stringify(newSettings));
+      localStorage.setItem('settingsLastUpdate', new Date().toISOString());
+      
+      // Clear timeout cũ
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Auto-save lên server sau 2 giây không nhập (debounce)
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoSave(newSettings);
+      }, 2000); // 2 giây
+      
+      setHasLocalChanges(true);
+      return newSettings;
+    });
   };
 
   const handleSave = async () => {
@@ -219,11 +263,18 @@ export default function SettingsManagement() {
         emailNotifications: settings.emailNotifications ?? false,
       };
       
-      // Lưu vào localStorage làm cache tạm thời
+      // Lưu vào localStorage làm cache tạm thời (trước khi save lên server)
       localStorage.setItem('adminSettings', JSON.stringify(settingsToSave));
+      localStorage.setItem('settingsLastUpdate', new Date().toISOString());
       
-      // Lưu lên server để đồng bộ với tất cả thiết bị
+      // Lưu lên server để đồng bộ với tất cả thiết bị (và Vercel KV nếu có)
       const success = await saveSettingsToServer(settingsToSave);
+      
+      // Nếu save thành công, đảm bảo localStorage cũng được update
+      if (success) {
+        localStorage.setItem('adminSettings', JSON.stringify(settingsToSave));
+        localStorage.setItem('settingsLastUpdate', new Date().toISOString());
+      }
       
       if (success) {
         setToast({ message: 'Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.', type: 'success' });
@@ -242,6 +293,15 @@ export default function SettingsManagement() {
       setSaving(false);
     }
   };
+
+  // Cleanup auto-save timeout khi unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleLogoUpload = (carrier: string, file: File | null) => {
     if (!file) return;

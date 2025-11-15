@@ -109,18 +109,23 @@ export function useSettings() {
  */
 export async function saveSettingsToServer(settings: AdminSettings): Promise<boolean> {
   try {
-    const response = await fetch('/api/settings', {
+    // Thêm timestamp để tránh browser cache
+    const response = await fetch(`/api/settings?t=${Date.now()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
       body: JSON.stringify({ settings }),
+      cache: 'no-store',
     });
 
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
-        // Lưu vào localStorage làm cache
+        // Lưu vào localStorage làm cache (sau khi save thành công)
         if (typeof window !== 'undefined') {
           localStorage.setItem('adminSettings', JSON.stringify(settings));
           localStorage.setItem('settingsLastUpdate', new Date().toISOString());
@@ -133,6 +138,11 @@ export async function saveSettingsToServer(settings: AdminSettings): Promise<boo
     return false;
   } catch (error) {
     console.error('Error saving settings to server:', error);
+    // Nếu lỗi, vẫn giữ localStorage để không mất data
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminSettings', JSON.stringify(settings));
+      localStorage.setItem('settingsLastUpdate', new Date().toISOString());
+    }
     return false;
   }
 }
