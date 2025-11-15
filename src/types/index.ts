@@ -74,6 +74,8 @@ export interface AdminSettings {
     mintmobile?: string;
     cricket?: string;
   };
+  telegramBotToken?: string;
+  telegramChatId?: string;
 }
 
 export interface WebsiteContent {

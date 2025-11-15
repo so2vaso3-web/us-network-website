@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
+import { loadOrdersFromServer, saveOrdersToServer, updateOrderOnServer } from '@/lib/useOrders';
 
 export default function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -14,39 +15,75 @@ export default function OrderManagement() {
 
   useEffect(() => {
     loadOrders();
-    // Auto-refresh orders every 30 seconds
-    const interval = setInterval(loadOrders, 30000);
-    return () => clearInterval(interval);
+    // Auto-refresh orders every 5 seconds để đồng bộ real-time
+    const interval = setInterval(loadOrders, 5000);
+    
+    // Lắng nghe event khi orders được cập nhật
+    const handleOrdersUpdated = () => {
+      loadOrders();
+    };
+    window.addEventListener('ordersUpdated', handleOrdersUpdated);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ordersUpdated', handleOrdersUpdated);
+    };
   }, []);
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
     if (typeof window !== 'undefined') {
+      try {
+        // Ưu tiên load từ server
+        const serverOrders = await loadOrdersFromServer();
+        if (Array.isArray(serverOrders)) {
+          setOrders(serverOrders);
+          return;
+        }
+      } catch (e) {
+        console.error('Error loading orders from server:', e);
+      }
+      
+      // Fallback: load từ localStorage
       const saved = localStorage.getItem('orders');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
           setOrders(Array.isArray(parsed) ? parsed : []);
         } catch (e) {
-          console.error('Error loading orders:', e);
+          console.error('Error loading orders from localStorage:', e);
           setOrders([]);
         }
       }
     }
   };
 
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     const updated = orders.map(o => o.orderId === orderId ? { ...o, status } : o);
     setOrders(updated);
     localStorage.setItem('orders', JSON.stringify(updated));
-    alert('Đã cập nhật trạng thái đơn hàng!');
+    
+    // Cập nhật lên server
+    const success = await updateOrderOnServer(orderId, { status });
+    if (success) {
+      alert('Đã cập nhật trạng thái đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.');
+    } else {
+      alert('Đã cập nhật trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
+    }
   };
 
-  const deleteOrder = (orderId: string) => {
+  const deleteOrder = async (orderId: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
       const updated = orders.filter(o => o.orderId !== orderId);
       setOrders(updated);
       localStorage.setItem('orders', JSON.stringify(updated));
-      alert('Đã xóa đơn hàng!');
+      
+      // Cập nhật lên server
+      const success = await saveOrdersToServer(updated);
+      if (success) {
+        alert('Đã xóa đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.');
+      } else {
+        alert('Đã xóa trong cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
+      }
     }
   };
 
@@ -59,7 +96,7 @@ export default function OrderManagement() {
     return statusMap[status];
   };
 
-  const handleBulkAction = (action: 'complete' | 'cancel' | 'delete') => {
+  const handleBulkAction = async (action: 'complete' | 'cancel' | 'delete') => {
     if (selectedOrders.size === 0) {
       alert('Vui lòng chọn ít nhất một đơn hàng!');
       return;
@@ -83,8 +120,16 @@ export default function OrderManagement() {
 
     setOrders(updated);
     localStorage.setItem('orders', JSON.stringify(updated));
+    
+    // Cập nhật lên server
+    const success = await saveOrdersToServer(updated);
+    if (success) {
+      alert(`Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} ${selectedOrders.size} đơn hàng! Tất cả thiết bị sẽ thấy cập nhật trong vòng 5 giây.`);
+    } else {
+      alert(`Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} trong cache local, nhưng không thể lưu lên server.`);
+    }
+    
     setSelectedOrders(new Set());
-    alert(`Đã ${action === 'complete' ? 'hoàn thành' : action === 'cancel' ? 'hủy' : 'xóa'} ${selectedOrders.size} đơn hàng!`);
     loadOrders();
   };
 

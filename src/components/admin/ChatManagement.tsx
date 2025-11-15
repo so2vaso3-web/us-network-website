@@ -33,10 +33,11 @@ export default function ChatManagement() {
 
   useEffect(() => {
     loadMessages();
-    // Auto-refresh messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
+    // Polling mỗi 1.5 giây để cập nhật NHANH - nhưng không quá nhiều requests
+    const interval = setInterval(loadMessages, 1500);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // loadMessages được định nghĩa trong component, không cần dependency
 
   useEffect(() => {
     if (messagesEndRef.current && selectedConversation) {
@@ -44,14 +45,87 @@ export default function ChatManagement() {
     }
   }, [selectedConversation]);
 
-  const loadMessages = () => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chatMessages');
-      if (saved) {
+  const loadMessages = async () => {
+    try {
+      // Load từ server trước (Vercel KV)
+      const response = await fetch(`/api/chat?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+        cache: 'no-store',
+      });
+
+      let messages: Message[] = [];
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.messages)) {
+          messages = data.messages;
+          // Update localStorage để sync
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+          }
+        }
+      }
+      
+      // MERGE với localStorage để không mất messages
+      if (typeof window !== 'undefined') {
+        const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        if (Array.isArray(localMessages) && localMessages.length > 0) {
+          // Merge: Ưu tiên server, nhưng giữ lại local nếu server không có
+          const messageMap = new Map<string, Message>();
+          
+          // Thêm messages từ server trước (ưu tiên)
+          messages.forEach((m: Message) => {
+            messageMap.set(m.id, m);
+          });
+          
+          // Thêm messages từ local nếu chưa có trong server
+          localMessages.forEach((m: Message) => {
+            if (!messageMap.has(m.id)) {
+              messageMap.set(m.id, m);
+            }
+          });
+          
+          // Convert map to array
+          messages = Array.from(messageMap.values());
+          
+          // Update localStorage với merged data
+          localStorage.setItem('chatMessages', JSON.stringify(messages));
+        }
+      }
+      
+      // Fallback: Nếu server không có, thử load từ localStorage
+      if (messages.length === 0 && typeof window !== 'undefined') {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            messages = Array.isArray(parsed) ? parsed : [];
+          } catch (e) {
+            console.error('Error parsing localStorage:', e);
+          }
+        }
+      }
+      
+      if (messages.length > 0) {
         try {
-          const parsed = JSON.parse(saved);
-          const messages = Array.isArray(parsed) ? parsed : [];
-          setAllMessages(messages);
+          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết
+          setAllMessages(prev => {
+            // So sánh để tránh update không cần thiết
+            if (prev.length === messages.length) {
+              const hasChanges = prev.some((p, idx) => {
+                const curr = messages[idx];
+                return !curr || p.id !== curr.id || p.message !== curr.message || p.timestamp !== curr.timestamp;
+              });
+              if (!hasChanges) {
+                return prev; // Không có thay đổi, giữ nguyên
+              }
+            }
+            return messages; // Có thay đổi, update
+          });
 
           // Group messages by visitorId
           const conversationMap = new Map<string, Conversation>();
@@ -90,37 +164,168 @@ export default function ChatManagement() {
             new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
           );
           
-          setConversations(convs);
+          // CHỈ update nếu có thay đổi
+          setConversations(prev => {
+            if (prev.length === convs.length) {
+              const hasChanges = prev.some((p, idx) => {
+                const curr = convs[idx];
+                return !curr || p.visitorId !== curr.visitorId || p.lastMessage !== curr.lastMessage || p.unreadCount !== curr.unreadCount;
+              });
+              if (!hasChanges) {
+                return prev; // Không có thay đổi, giữ nguyên
+              }
+            }
+            return convs; // Có thay đổi, update
+          });
+          
+          // Update selected conversation nếu đang mở
+          if (selectedConversation) {
+            const updatedConv = convs.find(c => c.visitorId === selectedConversation.visitorId);
+            if (updatedConv) {
+              // CHỈ update nếu có thay đổi
+              setSelectedConversation(prev => {
+                if (prev && prev.messages.length === updatedConv.messages.length) {
+                  const hasChanges = prev.messages.some((p, idx) => {
+                    const curr = updatedConv.messages[idx];
+                    return !curr || p.id !== curr.id || p.message !== curr.message;
+                  });
+                  if (!hasChanges) {
+                    return prev; // Không có thay đổi, giữ nguyên
+                  }
+                }
+                return updatedConv; // Có thay đổi, update
+              });
+            }
+          }
         } catch (e) {
-          console.error('Error loading messages:', e);
+          console.error('Error processing messages:', e);
+          // KHÔNG clear messages nếu có lỗi, giữ lại để không mất
+        }
+      } else {
+        // Chỉ clear nếu thực sự không có messages VÀ không có trong localStorage
+        if (typeof window !== 'undefined') {
+          const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+          if (localMessages.length === 0) {
+            setAllMessages([]);
+            setConversations([]);
+          }
+        } else {
           setAllMessages([]);
           setConversations([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      // KHÔNG clear messages nếu có lỗi, load từ localStorage
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setAllMessages(parsed);
+              // Process conversations từ local
+              const conversationMap = new Map<string, Conversation>();
+              parsed.forEach((msg: Message) => {
+                if (!msg.visitorId) return;
+                if (!conversationMap.has(msg.visitorId)) {
+                  const customerMsg = parsed.find((m: Message) => m.visitorId === msg.visitorId && !m.isAdmin);
+                  conversationMap.set(msg.visitorId, {
+                    visitorId: msg.visitorId,
+                    name: customerMsg?.name || 'Anonymous',
+                    email: customerMsg?.email || '',
+                    lastMessage: msg.message,
+                    lastMessageTime: msg.timestamp,
+                    unreadCount: 0,
+                    messages: [],
+                  });
+                }
+                const conv = conversationMap.get(msg.visitorId)!;
+                conv.messages.push(msg);
+                if (msg.timestamp > conv.lastMessageTime) {
+                  conv.lastMessage = msg.message;
+                  conv.lastMessageTime = msg.timestamp;
+                }
+                if (!msg.read && !msg.isAdmin) {
+                  conv.unreadCount++;
+                }
+              });
+              const convs = Array.from(conversationMap.values()).sort((a, b) => 
+                new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+              );
+              setConversations(convs);
+            }
+          } catch (e) {
+            console.error('Error loading from localStorage:', e);
+          }
         }
       }
     }
   };
 
-  const markConversationAsRead = (visitorId: string) => {
+  const markConversationAsRead = async (visitorId: string) => {
     const updated = allMessages.map(msg => 
       msg.visitorId === visitorId && !msg.isAdmin ? { ...msg, read: true } : msg
     );
     setAllMessages(updated);
     localStorage.setItem('chatMessages', JSON.stringify(updated));
-    loadMessages(); // Reload to update conversations
-  };
-
-  const markAllAsRead = () => {
-    const updated = allMessages.map(msg => ({ ...msg, read: true }));
-    setAllMessages(updated);
-    localStorage.setItem('chatMessages', JSON.stringify(updated));
+    
+    // Update conversations state ngay lập tức (optimistic update)
+    setConversations(prev => prev.map(conv => 
+      conv.visitorId === visitorId 
+        ? { ...conv, unreadCount: 0 }
+        : conv
+    ));
+    
+    // Save to server (không block UI)
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: updated }),
+    }).catch(error => {
+      console.error('Error saving to server:', error);
+    });
+    
+    // Reload để sync
     loadMessages();
   };
 
-  const deleteConversation = (visitorId: string) => {
+  const markAllAsRead = async () => {
+    const updated = allMessages.map(msg => ({ ...msg, read: true }));
+    setAllMessages(updated);
+    localStorage.setItem('chatMessages', JSON.stringify(updated));
+    
+    // Save to server
+    try {
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated }),
+      });
+    } catch (error) {
+      console.error('Error saving to server:', error);
+    }
+    
+    loadMessages();
+  };
+
+  const deleteConversation = async (visitorId: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa toàn bộ cuộc trò chuyện này?')) {
       const updated = allMessages.filter(msg => msg.visitorId !== visitorId);
       setAllMessages(updated);
       localStorage.setItem('chatMessages', JSON.stringify(updated));
+      
+      // Save to server
+      try {
+        await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: updated }),
+        });
+      } catch (error) {
+        console.error('Error saving to server:', error);
+      }
+      
       if (selectedConversation?.visitorId === visitorId) {
         setSelectedConversation(null);
       }
@@ -128,14 +333,14 @@ export default function ChatManagement() {
     }
   };
 
-  const sendReply = (conversation: Conversation) => {
+  const sendReply = async (conversation: Conversation) => {
     if (!replyText.trim()) {
-      alert('Vui lòng nhập nội dung trả lời!');
+      alert('Please enter a reply message!');
       return;
     }
 
     if (!conversation.visitorId) {
-      alert('Lỗi: Không tìm thấy visitor ID!');
+      alert('Error: Visitor ID not found!');
       return;
     }
 
@@ -151,18 +356,65 @@ export default function ChatManagement() {
     };
 
     const updated = [...allMessages, reply];
-    setAllMessages(updated);
-    localStorage.setItem('chatMessages', JSON.stringify(updated));
     
     // Mark all customer messages in this conversation as read
     const updatedWithRead = updated.map(msg => 
       msg.visitorId === conversation.visitorId && !msg.isAdmin ? { ...msg, read: true } : msg
     );
+    
     setAllMessages(updatedWithRead);
     localStorage.setItem('chatMessages', JSON.stringify(updatedWithRead));
     
+    // Update selected conversation để hiển thị reply ngay
+    if (selectedConversation?.visitorId === conversation.visitorId) {
+      const updatedConvMessages = updatedWithRead.filter(msg => msg.visitorId === conversation.visitorId);
+      setSelectedConversation({
+        ...selectedConversation,
+        messages: updatedConvMessages,
+        lastMessage: reply.message,
+        lastMessageTime: reply.timestamp,
+        unreadCount: 0,
+      });
+    }
+    
+    // Save to server TRƯỚC, sau đó mới gửi Telegram
+    try {
+      const saveResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updatedWithRead }),
+      });
+      
+      if (!saveResponse.ok) {
+        console.error('Failed to save reply to server:', saveResponse.status, saveResponse.statusText);
+      } else {
+        console.log('Reply saved to server successfully');
+      }
+    } catch (error) {
+      console.error('Error saving reply to server:', error);
+    }
+    
+    // Gửi notification qua Telegram (không block)
+    fetch('/api/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: conversation.name,
+        email: conversation.email,
+        message: `📤 Admin Reply:\n${replyText.trim()}`,
+        visitorId: conversation.visitorId,
+        isReply: true,
+      }),
+    }).catch(error => {
+      console.error('Error sending Telegram notification:', error);
+    });
+    
     setReplyText('');
-    loadMessages(); // Reload to update UI
+    
+    // Reload messages sau khi save xong để sync (delay ngắn hơn để mượt mà hơn)
+    setTimeout(() => {
+      loadMessages();
+    }, 300);
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -380,21 +632,25 @@ export default function ChatManagement() {
                       sendReply(selectedConversation);
                     }
                   }}
-                  placeholder="Nhập tin nhắn trả lời..."
+                  placeholder="Type your reply message..."
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3 resize-none"
                   rows={3}
                 />
                 <button
-                  onClick={() => sendReply(selectedConversation)}
-                  disabled={!replyText.trim()}
+                  onClick={() => {
+                    if (selectedConversation && replyText.trim()) {
+                      sendReply(selectedConversation);
+                    }
+                  }}
+                  disabled={!replyText.trim() || !selectedConversation}
                   className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                    replyText.trim()
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-blue-500/50'
+                    replyText.trim() && selectedConversation
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-blue-500/50 cursor-pointer'
                       : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
                   <i className="fas fa-paper-plane"></i>
-                  <span>Gửi Trả Lời</span>
+                  <span>Send Reply</span>
                 </button>
               </div>
             </>
