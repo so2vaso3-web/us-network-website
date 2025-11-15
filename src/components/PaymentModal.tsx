@@ -12,7 +12,7 @@ interface PaymentModalProps {
 }
 
 export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
-  const { settings } = useSettings();
+  const { settings, isLoading: settingsLoading } = useSettings();
   const [step, setStep] = useState<'customer-info' | 'payment-method'>('customer-info');
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
@@ -319,6 +319,11 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   // Load PayPal SDK when PayPal is selected
   useEffect(() => {
+    // Đợi settings load xong trước khi load PayPal SDK
+    if (settingsLoading) {
+      return;
+    }
+
     if (step === 'payment-method' && paymentMethod === 'paypal' && typeof window !== 'undefined' && !paypalLoaded) {
       try {
         // Get settings from hook or localStorage fallback
@@ -331,14 +336,20 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
           }
         })() : null);
 
-        if (currentSettings) {
-          const clientId = currentSettings.paypalClientId;
-          const currency = currentSettings.paypalCurrency || 'USD';
-          
-          if (!clientId) {
-            console.error('PayPal Client ID not found');
-            return;
-          }
+        if (!currentSettings) {
+          console.error('PayPal: Settings not found');
+          alert('PayPal settings not configured. Please configure PayPal Client ID in Admin Panel -> Settings.');
+          return;
+        }
+
+        const clientId = currentSettings.paypalClientId;
+        const currency = currentSettings.paypalCurrency || 'USD';
+        
+        if (!clientId || clientId.trim() === '') {
+          console.error('PayPal Client ID not found or empty');
+          alert('PayPal Client ID is not configured. Please configure it in Admin Panel -> Settings -> PayPal Settings.');
+          return;
+        }
           
           // Check if PayPal SDK is already loaded
           if ((window as any).paypal) {
@@ -380,22 +391,19 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               }
             }, 5000);
           };
-          script.onerror = () => {
-            console.error('Failed to load PayPal SDK');
-            alert('Failed to load PayPal SDK. Please check your internet connection and try again.');
+          script.onerror = (error) => {
+            console.error('Failed to load PayPal SDK:', error);
+            console.error('PayPal Client ID used:', clientId);
+            alert('Failed to load PayPal SDK. Please check:\n1. Your internet connection\n2. PayPal Client ID is valid\n3. PayPal SDK URL is accessible\n\nIf problem persists, check browser console for details.');
           };
           document.body.appendChild(script);
           console.log('PayPal SDK script added to page');
-        } else {
-          console.error('Admin settings not found');
-          alert('PayPal settings not configured. Please configure PayPal in Admin Panel.');
-        }
       } catch (e) {
         console.error('Error loading PayPal:', e);
-        alert('Error loading PayPal settings. Please check your configuration.');
+        alert('Error loading PayPal settings. Please check:\n1. Admin settings are configured\n2. PayPal Client ID is valid\n3. Check browser console for details.');
       }
     }
-  }, [step, paymentMethod, paypalLoaded, settings]);
+  }, [step, paymentMethod, paypalLoaded, settings, settingsLoading]);
 
       // Render PayPal button directly when SDK is loaded and ready
       useEffect(() => {
