@@ -109,7 +109,7 @@ export default function ChatWidget() {
     allMessages.push(newMessage);
     localStorage.setItem('chatMessages', JSON.stringify(allMessages));
 
-    // Update local state with visitor's messages
+    // Update local state with visitor's messages (optimistic update)
     const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
     setMessages(visitorMessages);
     
@@ -118,23 +118,32 @@ export default function ChatWidget() {
       setShowNameEmail(false);
     }
 
-    // Save to server (Vercel KV) để admin có thể thấy
-    try {
-      await fetch('/api/chat', {
+    // Save to server và gửi Telegram SONG SONG (parallel) để nhanh hơn
+    // Không await để không block UI
+    Promise.all([
+      // Save to server (Vercel KV) để admin có thể thấy
+      fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ messages: allMessages }),
-      });
-    } catch (error) {
-      console.error('Error saving chat to server:', error);
-      // Không hiển thị lỗi cho user, vẫn cho phép chat hoạt động bình thường
-    }
-
-    // Send to Telegram
-    try {
-      await fetch('/api/telegram', {
+      }).catch(error => {
+        console.error('Error saving chat to server:', error);
+        // Retry once after 1 second
+        setTimeout(() => {
+          fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages: allMessages }),
+          }).catch(err => console.error('Retry failed:', err));
+        }, 1000);
+      }),
+      
+      // Send to Telegram
+      fetch('/api/telegram', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,14 +154,30 @@ export default function ChatWidget() {
           message: newMessage.message,
           visitorId: newMessage.visitorId,
         }),
-      });
-    } catch (error) {
-      console.error('Error sending to Telegram:', error);
-      // Không hiển thị lỗi cho user, vẫn cho phép chat hoạt động bình thường
-    }
+      }).catch(error => {
+        console.error('Error sending to Telegram:', error);
+        // Retry once after 1 second
+        setTimeout(() => {
+          fetch('/api/telegram', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: newMessage.name,
+              email: newMessage.email,
+              message: newMessage.message,
+              visitorId: newMessage.visitorId,
+            }),
+          }).catch(err => console.error('Telegram retry failed:', err));
+        }, 1000);
+      }),
+    ]).catch(error => {
+      console.error('Error in parallel requests:', error);
+    });
 
-    // Auto-reply (optional)
-    setTimeout(async () => {
+    // Auto-reply (optional) - nhanh hơn với optimistic update
+    setTimeout(() => {
       const autoReply: Message = {
         id: `msg-${Date.now()}-reply`,
         visitorId: visitorId,
@@ -168,22 +193,31 @@ export default function ChatWidget() {
       allMessages.push(autoReply);
       localStorage.setItem('chatMessages', JSON.stringify(allMessages));
       
-      // Save to server
-      try {
-        await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ messages: allMessages }),
-        });
-      } catch (error) {
-        console.error('Error saving auto-reply to server:', error);
-      }
-      
+      // Optimistic update - hiển thị ngay
       const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
       setMessages(visitorMessages);
-    }, 1000);
+      
+      // Save to server (không block UI)
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: allMessages }),
+      }).catch(error => {
+        console.error('Error saving auto-reply to server:', error);
+        // Retry once
+        setTimeout(() => {
+          fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages: allMessages }),
+          }).catch(err => console.error('Auto-reply retry failed:', err));
+        }, 1000);
+      });
+    }, 800); // Giảm từ 1000ms xuống 800ms để nhanh hơn
   };
 
   const formatTime = (timestamp: string) => {

@@ -34,7 +34,8 @@ export default function ChatManagement() {
   useEffect(() => {
     loadMessages();
     // Auto-refresh messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
+    // Polling mỗi 2 giây để cập nhật nhanh hơn
+    const interval = setInterval(loadMessages, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -147,18 +148,24 @@ export default function ChatManagement() {
     setAllMessages(updated);
     localStorage.setItem('chatMessages', JSON.stringify(updated));
     
-    // Save to server
-    try {
-      await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updated }),
-      });
-    } catch (error) {
-      console.error('Error saving to server:', error);
-    }
+    // Update conversations state ngay lập tức (optimistic update)
+    setConversations(prev => prev.map(conv => 
+      conv.visitorId === visitorId 
+        ? { ...conv, unreadCount: 0 }
+        : conv
+    ));
     
-    loadMessages(); // Reload to update conversations
+    // Save to server (không block UI)
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: updated }),
+    }).catch(error => {
+      console.error('Error saving to server:', error);
+    });
+    
+    // Reload để sync
+    loadMessages();
   };
 
   const markAllAsRead = async () => {
@@ -264,10 +271,8 @@ export default function ChatManagement() {
     }
     
     setReplyText('');
-    // Reload messages để sync với server
-    setTimeout(() => {
-      loadMessages();
-    }, 500);
+    // Reload messages ngay lập tức để sync với server
+    loadMessages();
   };
 
   const filteredConversations = conversations.filter(conv => {
