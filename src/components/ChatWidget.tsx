@@ -24,6 +24,7 @@ export default function ChatWidget() {
   const [showNameEmail, setShowNameEmail] = useState(true);
   const [visitorId, setVisitorId] = useState<string>('');
   const [hasWelcomeMessage, setHasWelcomeMessage] = useState(false);
+  const [hasAutoReply, setHasAutoReply] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +49,13 @@ export default function ChatWidget() {
           // Check if welcome message exists
           const hasWelcome = visitorMessages.some((m: Message) => m.isAdmin && (m.message.includes('Welcome') || m.message.includes('Hello')));
           setHasWelcomeMessage(hasWelcome);
+          
+          // Check if auto-reply already sent (chỉ gửi 1 lần)
+          const hasAutoReplySent = visitorMessages.some((m: Message) => 
+            m.isAdmin && 
+            m.message.includes('Thank you for your message! Our support team will respond as soon as possible.')
+          );
+          setHasAutoReply(hasAutoReplySent);
         } catch (e) {
           console.error('Error loading messages:', e);
         }
@@ -234,48 +242,66 @@ export default function ChatWidget() {
       console.error('Error in parallel requests:', error);
     });
 
-    // Auto-reply (optional) - nhanh hơn với optimistic update
-    setTimeout(() => {
-      const autoReply: Message = {
-        id: `msg-${Date.now()}-reply`,
-        visitorId: visitorId,
-        name: 'Support Team',
-        email: '',
-        message: 'Thank you for your message! Our support team will respond as soon as possible.',
-        timestamp: new Date().toISOString(),
-        isAdmin: true,
-        read: false,
-      };
-      
-      const allMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-      allMessages.push(autoReply);
-      localStorage.setItem('chatMessages', JSON.stringify(allMessages));
-      
-      // Optimistic update - hiển thị ngay
-      const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
-      setMessages(visitorMessages);
-      
-      // Save to server (không block UI)
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messages: allMessages }),
-      }).catch(error => {
-        console.error('Error saving auto-reply to server:', error);
-        // Retry once
-        setTimeout(() => {
-          fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ messages: allMessages }),
-          }).catch(err => console.error('Auto-reply retry failed:', err));
-        }, 1000);
-      });
-    }, 800); // Giảm từ 1000ms xuống 800ms để nhanh hơn
+    // Auto-reply (optional) - CHỈ GỬI 1 LẦN cho mỗi visitor
+    if (!hasAutoReply) {
+      setTimeout(() => {
+        // Double check để tránh race condition
+        const allMessagesCheck = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        const visitorMessagesCheck = allMessagesCheck.filter((m: Message) => m.visitorId === visitorId);
+        const alreadyHasAutoReply = visitorMessagesCheck.some((m: Message) => 
+          m.isAdmin && 
+          m.message.includes('Thank you for your message! Our support team will respond as soon as possible.')
+        );
+        
+        if (alreadyHasAutoReply) {
+          setHasAutoReply(true);
+          return;
+        }
+        
+        const autoReply: Message = {
+          id: `msg-${Date.now()}-reply`,
+          visitorId: visitorId,
+          name: 'Support Team',
+          email: '',
+          message: 'Thank you for your message! Our support team will respond as soon as possible.',
+          timestamp: new Date().toISOString(),
+          isAdmin: true,
+          read: false,
+        };
+        
+        const allMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        allMessages.push(autoReply);
+        localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+        
+        // Mark as sent
+        setHasAutoReply(true);
+        
+        // Optimistic update - hiển thị ngay
+        const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
+        setMessages(visitorMessages);
+        
+        // Save to server (không block UI)
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messages: allMessages }),
+        }).catch(error => {
+          console.error('Error saving auto-reply to server:', error);
+          // Retry once
+          setTimeout(() => {
+            fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ messages: allMessages }),
+            }).catch(err => console.error('Auto-reply retry failed:', err));
+          }, 1000);
+        });
+      }, 800);
+    }
   };
 
   const formatTime = (timestamp: string) => {
