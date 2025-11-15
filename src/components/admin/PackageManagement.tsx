@@ -100,6 +100,8 @@ export default function PackageManagement() {
   const handleEdit = (pkg: Package) => {
     setEditingPackage({ ...pkg });
     setShowForm(true);
+    // Scroll to top để thấy form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAdd = () => {
@@ -113,8 +115,11 @@ export default function PackageManagement() {
       speed: '',
       hotspot: '',
       features: [],
+      badge: undefined,
     });
     setShowForm(true);
+    // Scroll to top để thấy form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSave = () => {
@@ -228,13 +233,49 @@ export default function PackageManagement() {
       </div>
 
       {showForm && editingPackage && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1a1f3a] rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10">
-            <h3 className="text-xl font-bold mb-4">
-              {packages.find(p => p.id === editingPackage.id) ? 'Sửa' : 'Thêm'} Gói Cước
-            </h3>
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowForm(false);
+              setEditingPackage(null);
+            }
+          }}
+        >
+          <div 
+            className="bg-[#1a1f3a] rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold">
+                {packages.find(p => p.id === editingPackage.id) ? 'Sửa' : 'Thêm'} Gói Cước
+              </h3>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingPackage(null);
+                }}
+                className="text-gray-400 hover:text-white text-2xl transition-colors w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700"
+              >
+                ×
+              </button>
+            </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block mb-2 font-semibold">ID *</label>
+                <input
+                  type="text"
+                  value={editingPackage.id}
+                  onChange={(e) => setEditingPackage({ ...editingPackage, id: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                  placeholder="vz-5g-start-month"
+                  disabled={!!packages.find(p => p.id === editingPackage.id)}
+                />
+                <small className="text-gray-400 text-xs block mt-1">
+                  ID là duy nhất, không thể thay đổi khi đang sửa gói cước có sẵn.
+                </small>
+              </div>
               <div>
                 <label className="block mb-2 font-semibold">Nhà Mạng *</label>
                 <select
@@ -338,18 +379,23 @@ export default function PackageManagement() {
               </div>
             </div>
 
-            <div className="flex gap-4 mt-6">
+            <div className="flex gap-4 mt-6 pt-6 border-t border-white/10">
               <button
-                onClick={() => { setShowForm(false); setEditingPackage(null); }}
-                className="flex-1 px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                onClick={() => { 
+                  if (window.confirm('Bạn có chắc chắn muốn hủy? Thay đổi chưa được lưu sẽ bị mất.')) {
+                    setShowForm(false);
+                    setEditingPackage(null);
+                  }
+                }}
+                className="flex-1 px-4 py-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors font-semibold"
               >
                 Hủy
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/50 font-semibold"
               >
-                Lưu
+                <i className="fas fa-save mr-2"></i>Lưu Gói Cước
               </button>
             </div>
           </div>
