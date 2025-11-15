@@ -117,7 +117,7 @@ export default function ChatWidget() {
             // Filter messages for this visitor
             const visitorMessages = data.messages.filter((m: Message) => m.visitorId === visitorId);
             
-            // Always update messages để sync với server
+            // Always update messages từ server để đảm bảo sync
             setMessages(prevMessages => {
               // Check if there are new messages (admin replies)
               const currentMessageIds = new Set(prevMessages.map(m => m.id));
@@ -131,21 +131,15 @@ export default function ChatWidget() {
                     type: 'info' 
                   });
                 }
-                return visitorMessages;
               }
               
-              // Update messages even if no new ones (to sync) - nhưng chỉ nếu có thay đổi
-              if (prevMessages.length !== visitorMessages.length) {
-                return visitorMessages;
-              }
+              // LUÔN update từ server để đảm bảo sync đúng
+              // Sort by timestamp để đảm bảo thứ tự đúng
+              const sorted = [...visitorMessages].sort((a, b) => 
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
               
-              // Check if message content changed
-              const hasChanges = prevMessages.some((prev, idx) => {
-                const curr = visitorMessages[idx];
-                return !curr || prev.id !== curr.id || prev.message !== curr.message;
-              });
-              
-              return hasChanges ? visitorMessages : prevMessages;
+              return sorted;
             });
           }
         } else {

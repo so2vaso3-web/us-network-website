@@ -255,38 +255,44 @@ export default function ChatManagement() {
       });
     }
     
-    // Save to server và gửi Telegram notification SONG SONG
-    Promise.all([
-      // Save to server
-      fetch('/api/chat', {
+    // Save to server TRƯỚC, sau đó mới gửi Telegram
+    try {
+      const saveResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: updatedWithRead }),
-      }).catch(error => {
-        console.error('Error saving reply to server:', error);
-      }),
+      });
       
-      // Gửi notification qua Telegram để admin biết đã reply
-      fetch('/api/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: conversation.name,
-          email: conversation.email,
-          message: `📤 Admin Reply:\n${replyText.trim()}`,
-          visitorId: conversation.visitorId,
-          isReply: true,
-        }),
-      }).catch(error => {
-        console.error('Error sending Telegram notification:', error);
+      if (!saveResponse.ok) {
+        console.error('Failed to save reply to server:', saveResponse.status, saveResponse.statusText);
+      } else {
+        console.log('Reply saved to server successfully');
+      }
+    } catch (error) {
+      console.error('Error saving reply to server:', error);
+    }
+    
+    // Gửi notification qua Telegram (không block)
+    fetch('/api/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: conversation.name,
+        email: conversation.email,
+        message: `📤 Admin Reply:\n${replyText.trim()}`,
+        visitorId: conversation.visitorId,
+        isReply: true,
       }),
-    ]).catch(error => {
-      console.error('Error in parallel requests:', error);
+    }).catch(error => {
+      console.error('Error sending Telegram notification:', error);
     });
     
     setReplyText('');
-    // Reload messages ngay lập tức để sync với server
-    loadMessages();
+    
+    // Reload messages sau khi save xong để sync
+    setTimeout(() => {
+      loadMessages();
+    }, 500);
   };
 
   const filteredConversations = conversations.filter(conv => {
