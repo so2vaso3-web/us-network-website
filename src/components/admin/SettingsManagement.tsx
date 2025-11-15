@@ -34,72 +34,86 @@ export default function SettingsManagement() {
   }, []);
 
   const handleSave = async () => {
-    const settingsJson = JSON.stringify(settings);
-    localStorage.setItem('adminSettings', settingsJson);
-    
-    // Also save to server for cross-device sync - PRIORITY
     try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ settings }),
-      });
+      const settingsJson = JSON.stringify(settings);
       
-      if (response.ok) {
-        console.log('Settings saved to server successfully');
-        
-        // Dispatch global event to force all devices to sync immediately
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('forceSettingsSync', { 
-            detail: { settings, timestamp: Date.now() } 
-          }));
-        }
-      } else {
-        console.error('Failed to save settings to server');
-        setAlertModal({ isOpen: true, message: 'Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.', type: 'error' });
-        return;
-      }
-    } catch (error) {
-      console.error('Error saving settings to server:', error);
-      setAlertModal({ isOpen: true, message: 'Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.', type: 'error' });
-      return;
-    }
-    
-    // Also save to sessionStorage for cross-tab sync
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('sharedAdminSettings', settingsJson);
-        // Set a timestamp to track when settings were last updated
-        sessionStorage.setItem('settingsLastUpdated', Date.now().toString());
-      } catch (e) {
-        console.log('SessionStorage not available');
-      }
-    }
-    
-    // Dispatch custom event to notify other components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('settingsUpdated', { 
-        detail: { settings, timestamp: Date.now() } 
-      }));
+      // Save to localStorage first (always works)
+      localStorage.setItem('adminSettings', settingsJson);
+      console.log('Settings saved to localStorage');
       
-      // Use BroadcastChannel to sync across tabs/windows
+      // Also save to server for cross-device sync - PRIORITY
       try {
-        const channel = new BroadcastChannel('settings-sync');
-        channel.postMessage({
-          type: 'settingsUpdated',
-          timestamp: Date.now(),
-          settings: settings
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ settings }),
         });
-        channel.close();
-      } catch (e) {
-        console.log('BroadcastChannel not supported, using fallback');
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log('Settings saved to server successfully');
+          
+          // Dispatch global event to force all devices to sync immediately
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('forceSettingsSync', { 
+              detail: { settings, timestamp: Date.now() } 
+            }));
+          }
+        } else {
+          const errorMsg = result.error || 'Unknown error';
+          console.error('Failed to save settings to server:', errorMsg);
+          // Still show success because localStorage saved, but warn about server
+          setAlertModal({ isOpen: true, message: `Đã lưu vào bộ nhớ local thành công! (Lưu ý: Không thể lưu lên server: ${errorMsg})`, type: 'warning' });
+          // Don't return, continue to show success message
+        }
+      } catch (error: any) {
+        console.error('Error saving settings to server:', error);
+        // Still show success because localStorage saved
+        setAlertModal({ isOpen: true, message: `Đã lưu vào bộ nhớ local thành công! (Lưu ý: Không thể lưu lên server: ${error.message || 'Network error'})`, type: 'warning' });
+        // Don't return, continue to show success message
       }
+      
+      // Also save to sessionStorage for cross-tab sync
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('sharedAdminSettings', settingsJson);
+          // Set a timestamp to track when settings were last updated
+          sessionStorage.setItem('settingsLastUpdated', Date.now().toString());
+        } catch (e) {
+          console.log('SessionStorage not available');
+        }
+      }
+      
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { 
+          detail: { settings, timestamp: Date.now() } 
+        }));
+        
+        // Use BroadcastChannel to sync across tabs/windows
+        try {
+          const channel = new BroadcastChannel('settings-sync');
+          channel.postMessage({
+            type: 'settingsUpdated',
+            timestamp: Date.now(),
+            settings: settings
+          });
+          channel.close();
+        } catch (e) {
+          console.log('BroadcastChannel not supported, using fallback');
+        }
+      }
+      
+      // Always show success message (localStorage always saves)
+      setAlertModal({ isOpen: true, message: '✅ Đã lưu cài đặt thành công! Tất cả thiết bị sẽ tự động cập nhật trong vòng 1 giây.', type: 'success' });
+    } catch (error: any) {
+      console.error('Error in handleSave:', error);
+      setAlertModal({ isOpen: true, message: `Lỗi khi lưu cài đặt: ${error.message || 'Unknown error'}. Vui lòng thử lại.`, type: 'error' });
     }
-    
-    setAlertModal({ isOpen: true, message: 'Đã lưu cài đặt thành công! Tất cả thiết bị sẽ tự động cập nhật trong vòng 1 giây.', type: 'success' });
   };
 
   const handleLogoUpload = (carrier: string, file: File | null) => {

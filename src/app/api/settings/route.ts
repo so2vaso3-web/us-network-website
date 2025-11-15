@@ -1,31 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, readFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { readSettingsFromKV, saveSettingsToKV } from '@/lib/settings-storage';
+import { encryptSettings } from '@/lib/encryption';
 
-const SETTINGS_FILE = join(process.cwd(), 'data', 'settings.json');
-
-// Ensure data directory exists
-async function ensureDataDir() {
-  const dataDir = join(process.cwd(), 'data');
-  try {
-    await mkdir(dataDir, { recursive: true });
-  } catch (e) {
-    // Directory might already exist
-  }
-}
-
-// GET - Load settings
+// GET - Load settings from Redis/KV
 export async function GET() {
   try {
-    await ensureDataDir();
-    try {
-      const data = await readFile(SETTINGS_FILE, 'utf-8');
-      const settings = JSON.parse(data);
+    const settings = await readSettingsFromKV(true); // decrypt = true
+    if (settings && typeof settings === 'object') {
       return NextResponse.json({ success: true, settings });
-    } catch (e) {
-      // File doesn't exist yet, return empty
-      return NextResponse.json({ success: true, settings: null });
     }
+    // No settings found, return empty
+    return NextResponse.json({ success: true, settings: null });
   } catch (error: any) {
     console.error('Error loading settings:', error);
     return NextResponse.json(
@@ -35,7 +20,7 @@ export async function GET() {
   }
 }
 
-// POST - Save settings
+// POST - Save settings to Redis/KV
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -48,14 +33,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureDataDir();
-    await writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+    // Save to Redis/KV (encrypted)
+    await saveSettingsToKV(settings, encryptSettings);
+    console.log('✅ Settings saved to Redis/KV successfully');
 
-    return NextResponse.json({ success: true, message: 'Settings saved' });
+    return NextResponse.json({ success: true, message: 'Settings saved to Redis/KV' });
   } catch (error: any) {
-    console.error('Error saving settings:', error);
+    console.error('Error saving settings to Redis/KV:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error.message || 'Failed to save settings' },
       { status: 500 }
     );
   }
