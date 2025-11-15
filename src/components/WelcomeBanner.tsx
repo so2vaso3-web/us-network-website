@@ -230,14 +230,14 @@ export default function WelcomeBanner() {
                 className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 backdrop-blur-sm rounded-lg font-medium hover:bg-white/20 transition-all duration-300 border border-white/20 hover:border-white/30 flex items-center justify-center gap-1.5 sm:gap-2 text-gray-300 hover:text-white text-[10px] sm:text-xs md:text-sm"
               >
                 <i className="fas fa-clock text-xs"></i>
-                <span>Đóng (1 giờ)</span>
+                <span>Dismiss (1 hour)</span>
               </button>
               <button
                 onClick={handleNeverShow}
                 className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 backdrop-blur-sm rounded-lg font-medium hover:bg-white/20 transition-all duration-300 border border-white/20 hover:border-white/30 flex items-center justify-center gap-1.5 sm:gap-2 text-gray-300 hover:text-white text-[10px] sm:text-xs md:text-sm"
               >
                 <i className="fas fa-eye-slash text-xs"></i>
-                <span>Đóng vĩnh viễn</span>
+                <span>Dismiss Permanently</span>
               </button>
             </div>
           </div>
