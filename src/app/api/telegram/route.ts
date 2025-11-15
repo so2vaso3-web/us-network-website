@@ -1,41 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/storage';
+import { readSettingsFromKV } from '@/lib/settings-storage';
 
 // Telegram Bot API endpoint
 const TELEGRAM_API_URL = 'https://api.telegram.org/bot';
-const STORAGE_KEY = 'adminSettings';
 
 // Helper function to get Telegram settings from adminSettings
 async function getTelegramSettings(): Promise<{ botToken: string; chatId: string } | null> {
   try {
-    // Đọc từ storage utility (Vercel KV hoặc file system)
-    let settings = storage.get(STORAGE_KEY);
-    
-    // Nếu là Promise (từ KV adapter), await nó
-    if (settings instanceof Promise) {
-      settings = await settings;
-    }
-    
-    // Nếu là VercelKVAdapter, load từ KV vào cache trước
-    if (settings === null && process.env.KV_REST_API_URL) {
-      try {
-        const { kv } = require('@vercel/kv');
-        settings = await kv.get(STORAGE_KEY);
-        if (settings) {
-          // Update cache
-          storage.set(STORAGE_KEY, settings);
-        }
-      } catch (e) {
-        // Ignore
-      }
-    }
+    // Đọc từ Vercel KV/Redis (đã decrypt)
+    const settings = await readSettingsFromKV(true); // decrypt = true
     
     if (settings && typeof settings === 'object') {
+      // Check if settings have telegramBotToken and telegramChatId
       if (settings.telegramBotToken && settings.telegramChatId) {
         return {
           botToken: settings.telegramBotToken,
           chatId: settings.telegramChatId,
         };
+      } else {
+        console.warn('Telegram settings missing:', {
+          hasToken: !!settings.telegramBotToken,
+          hasChatId: !!settings.telegramChatId,
+        });
       }
     }
   } catch (error) {
