@@ -98,9 +98,23 @@ export default function SettingsManagement() {
           
           let mergedSettings: AdminSettings;
           
-          // ƯU TIÊN localStorage trước (user đang nhập), sau đó merge server (backup)
-          if (localSettingsData) {
-            // Có localStorage: DÙNG localStorage làm base, merge server nếu thiếu
+          // Nếu server không có data NHƯNG localStorage có, dùng localStorage làm source of truth
+          if (!hasServerData && localSettingsData) {
+            console.log('📦 Server không có data, dùng localStorage làm source of truth');
+            const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
+              ? localSettingsData.paypalMode 
+              : 'sandbox';
+            const validCryptoGateway = (localSettingsData.cryptoGateway === 'manual' || localSettingsData.cryptoGateway === 'bitpay') 
+              ? localSettingsData.cryptoGateway 
+              : 'manual';
+            mergedSettings = { 
+              ...defaultSettings, 
+              ...localSettingsData,
+              paypalMode: validPaypalMode,
+              cryptoGateway: validCryptoGateway,
+            } as AdminSettings;
+          } else if (hasServerData && localSettingsData) {
+            // Nếu cả 2 đều có, merge: localStorage (priority) > server
             const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
               ? localSettingsData.paypalMode 
               : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
@@ -111,31 +125,29 @@ export default function SettingsManagement() {
               : ((serverSettings?.cryptoGateway === 'manual' || serverSettings?.cryptoGateway === 'bitpay') 
                   ? serverSettings.cryptoGateway 
                   : 'manual');
-            
-            // Merge: localStorage (ưu tiên) -> server (fill missing) -> default
-            mergedSettings = {
-              ...defaultSettings,
-              ...serverSettings, // Server settings fill missing fields
-              ...localSettingsData, // localStorage OVERRIDE (ưu tiên cao nhất - user đang nhập)
+            mergedSettings = { 
+              ...defaultSettings, 
+              ...serverSettings, 
+              ...localSettingsData,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
-            };
+            } as AdminSettings;
           } else if (hasServerData && serverSettings) {
-            // Không có localStorage, dùng server
+            // Chỉ có server data
             const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
               ? serverSettings.paypalMode 
               : 'sandbox';
             const validCryptoGateway = (serverSettings.cryptoGateway === 'manual' || serverSettings.cryptoGateway === 'bitpay') 
               ? serverSettings.cryptoGateway 
               : 'manual';
-            
-            mergedSettings = {
-              ...defaultSettings,
+            mergedSettings = { 
+              ...defaultSettings, 
               ...serverSettings,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
-            };
+            } as AdminSettings;
           } else {
+            // Không có gì, dùng default
             mergedSettings = defaultSettings;
           }
           
