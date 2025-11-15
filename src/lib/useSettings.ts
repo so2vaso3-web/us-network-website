@@ -13,10 +13,11 @@ export function useSettings() {
 
   const fetchSettingsFromServer = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings', {
+      const response = await fetch(`/api/settings?t=${Date.now()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
         cache: 'no-store',
       });
@@ -24,12 +25,24 @@ export function useSettings() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.settings) {
-          setSettings(data.settings);
-          // Lưu vào localStorage làm cache
+          // CHỈ update state nếu chưa có settings (initial load)
+          // Để tránh polling overwrite user input
+          setSettings(prev => {
+            // Chỉ update nếu chưa có settings
+            if (!prev) {
+              return data.settings;
+            }
+            // Giữ nguyên settings hiện tại để không overwrite user input
+            return prev;
+          });
+          
+          // Luôn lưu vào localStorage để cache (nhưng không update state)
           if (typeof window !== 'undefined') {
+            const serverTimestamp = data.timestamp || new Date().toISOString();
             localStorage.setItem('adminSettings', JSON.stringify(data.settings));
-            localStorage.setItem('settingsLastUpdate', new Date().toISOString());
+            localStorage.setItem('settingsLastUpdate', serverTimestamp);
           }
+          
           return true;
         }
       }
@@ -67,12 +80,15 @@ export function useSettings() {
     // Load settings lần đầu
     loadSettings();
 
-    // Polling: Tự động fetch mỗi 10 giây để cập nhật real-time
+    // Polling: Tự động fetch mỗi 30 giây để cập nhật real-time (tăng lên để tránh conflict với user input)
+    // CHỈ fetch, không tự động merge - để tránh overwrite user input
     pollInterval = setInterval(async () => {
       if (isMounted) {
+        // Chỉ fetch, không tự động update state
+        // State sẽ chỉ update khi có event 'settingsUpdated' từ tab khác
         await fetchSettingsFromServer();
       }
-    }, 10000); // 10 giây
+    }, 30000); // 30 giây - giảm tần suất để tránh conflict
 
     // Lắng nghe event khi admin cập nhật settings (để cập nhật ngay lập tức)
     const handleSettingsUpdated = () => {

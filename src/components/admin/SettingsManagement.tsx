@@ -148,43 +148,8 @@ export default function SettingsManagement() {
       };
       
       autoRestore();
-    } else if (serverSettings && !hasLocalChanges && !initialLoad && !isLoading) {
-      // Chỉ update từ server nếu không có thay đổi local và không đang loading
-      // QUAN TRỌNG: Merge với settings hiện tại để GIỮ LẠI các fields đã có (đặc biệt là paypalClientId, paypalClientSecret)
-      setSettings(prev => {
-        // Validate enum fields trước
-        const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
-          ? serverSettings.paypalMode 
-          : prev.paypalMode;
-        const validCryptoGateway = (serverSettings.cryptoGateway === 'manual' || serverSettings.cryptoGateway === 'bitpay') 
-          ? serverSettings.cryptoGateway 
-          : prev.cryptoGateway;
-        
-        // Merge: Giữ lại TẤT CẢ values từ prev (localStorage), chỉ update nếu server có giá trị mới
-        const merged: AdminSettings = {
-          ...prev, // GIỮ LẠI tất cả settings hiện tại (quan trọng!)
-          // Chỉ update các fields mà server có (không làm mất các fields khác)
-          ...Object.fromEntries(
-            Object.entries(serverSettings).filter(([_, value]) => value !== undefined && value !== null && value !== '')
-          ) as Partial<AdminSettings>,
-          // Đảm bảo các boolean fields không bị undefined
-          paypalEnabled: serverSettings.paypalEnabled !== undefined ? serverSettings.paypalEnabled : prev.paypalEnabled,
-          cryptoEnabled: serverSettings.cryptoEnabled !== undefined ? serverSettings.cryptoEnabled : prev.cryptoEnabled,
-          autoApproveOrders: serverSettings.autoApproveOrders !== undefined ? serverSettings.autoApproveOrders : prev.autoApproveOrders,
-          emailNotifications: serverSettings.emailNotifications !== undefined ? serverSettings.emailNotifications : prev.emailNotifications,
-          // Validate enum values
-          paypalMode: validPaypalMode,
-          cryptoGateway: validCryptoGateway,
-        };
-        
-        // Lưu vào localStorage để đảm bảo không mất
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('adminSettings', JSON.stringify(merged));
-        }
-        
-        return merged;
-      });
-    }
+    // KHÔNG tự động merge từ server nữa - chỉ dùng khi initial load
+    // Để tránh server polling overwrite user input
   }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
 
   // Auto-save function với debounce
@@ -225,10 +190,10 @@ export default function SettingsManagement() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
       
-      // Auto-save lên server sau 2 giây không nhập (debounce)
+      // Auto-save lên server sau 3 giây không nhập (debounce) - tăng lên để tránh conflict
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSave(newSettings);
-      }, 2000); // 2 giây
+      }, 3000); // 3 giây
       
       setHasLocalChanges(true);
       return newSettings;

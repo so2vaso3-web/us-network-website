@@ -44,14 +44,46 @@ export default function ChatManagement() {
     }
   }, [selectedConversation]);
 
-  const loadMessages = () => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chatMessages');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const messages = Array.isArray(parsed) ? parsed : [];
-          setAllMessages(messages);
+  const loadMessages = async () => {
+    try {
+      // Load từ server trước (Vercel KV)
+      const response = await fetch(`/api/chat?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+        cache: 'no-store',
+      });
+
+      let messages: Message[] = [];
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.messages)) {
+          messages = data.messages;
+          // Update localStorage để sync
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+          }
+        }
+      }
+      
+      // Fallback: Nếu server không có, thử load từ localStorage
+      if (messages.length === 0 && typeof window !== 'undefined') {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            messages = Array.isArray(parsed) ? parsed : [];
+          } catch (e) {
+            console.error('Error parsing localStorage:', e);
+          }
+        }
+      }
+      
+      if (messages.length > 0) {
+        setAllMessages(messages);
 
           // Group messages by visitorId
           const conversationMap = new Map<string, Conversation>();
@@ -92,35 +124,78 @@ export default function ChatManagement() {
           
           setConversations(convs);
         } catch (e) {
-          console.error('Error loading messages:', e);
+          console.error('Error processing messages:', e);
           setAllMessages([]);
           setConversations([]);
         }
+      } else {
+        setAllMessages([]);
+        setConversations([]);
       }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setAllMessages([]);
+      setConversations([]);
     }
   };
 
-  const markConversationAsRead = (visitorId: string) => {
+  const markConversationAsRead = async (visitorId: string) => {
     const updated = allMessages.map(msg => 
       msg.visitorId === visitorId && !msg.isAdmin ? { ...msg, read: true } : msg
     );
     setAllMessages(updated);
     localStorage.setItem('chatMessages', JSON.stringify(updated));
+    
+    // Save to server
+    try {
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated }),
+      });
+    } catch (error) {
+      console.error('Error saving to server:', error);
+    }
+    
     loadMessages(); // Reload to update conversations
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     const updated = allMessages.map(msg => ({ ...msg, read: true }));
     setAllMessages(updated);
     localStorage.setItem('chatMessages', JSON.stringify(updated));
+    
+    // Save to server
+    try {
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated }),
+      });
+    } catch (error) {
+      console.error('Error saving to server:', error);
+    }
+    
     loadMessages();
   };
 
-  const deleteConversation = (visitorId: string) => {
+  const deleteConversation = async (visitorId: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa toàn bộ cuộc trò chuyện này?')) {
       const updated = allMessages.filter(msg => msg.visitorId !== visitorId);
       setAllMessages(updated);
       localStorage.setItem('chatMessages', JSON.stringify(updated));
+      
+      // Save to server
+      try {
+        await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: updated }),
+        });
+      } catch (error) {
+        console.error('Error saving to server:', error);
+      }
+      
       if (selectedConversation?.visitorId === visitorId) {
         setSelectedConversation(null);
       }
@@ -128,7 +203,7 @@ export default function ChatManagement() {
     }
   };
 
-  const sendReply = (conversation: Conversation) => {
+  const sendReply = async (conversation: Conversation) => {
     if (!replyText.trim()) {
       alert('Vui lòng nhập nội dung trả lời!');
       return;
@@ -160,6 +235,17 @@ export default function ChatManagement() {
     );
     setAllMessages(updatedWithRead);
     localStorage.setItem('chatMessages', JSON.stringify(updatedWithRead));
+    
+    // Save to server
+    try {
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updatedWithRead }),
+      });
+    } catch (error) {
+      console.error('Error saving reply to server:', error);
+    }
     
     setReplyText('');
     loadMessages(); // Reload to update UI

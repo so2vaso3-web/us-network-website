@@ -118,6 +118,20 @@ export default function ChatWidget() {
       setShowNameEmail(false);
     }
 
+    // Save to server (Vercel KV) để admin có thể thấy
+    try {
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: allMessages }),
+      });
+    } catch (error) {
+      console.error('Error saving chat to server:', error);
+      // Không hiển thị lỗi cho user, vẫn cho phép chat hoạt động bình thường
+    }
+
     // Send to Telegram
     try {
       await fetch('/api/telegram', {
@@ -153,6 +167,19 @@ export default function ChatWidget() {
       const allMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
       allMessages.push(autoReply);
       localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+      
+      // Save to server
+      try {
+        await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messages: allMessages }),
+        });
+      } catch (error) {
+        console.error('Error saving auto-reply to server:', error);
+      }
       
       const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
       setMessages(visitorMessages);
