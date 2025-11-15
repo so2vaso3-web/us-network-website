@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { Package } from '@/types';
 import { defaultPackages } from '@/lib/data';
 import { savePackagesToServer, notifyPackagesUpdated } from '@/lib/usePackages';
+import Toast from '@/components/Toast';
 
 export default function PackageManagement() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   const loadPackages = async () => {
     if (typeof window !== 'undefined') {
@@ -78,18 +80,20 @@ export default function PackageManagement() {
     const success = await savePackagesToServer(updatedPackages);
     
     if (success) {
-      alert('Đã lưu gói cước thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.');
+      setToast({ message: 'Đã lưu gói cước thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.', type: 'success' });
     } else {
-      alert('Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.');
+      setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
       // Vẫn dispatch event để cập nhật trong tab hiện tại
       notifyPackagesUpdated();
     }
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa gói cước này?')) {
+    const pkg = packages.find(p => p.id === id);
+    if (window.confirm(`Bạn có chắc chắn muốn xóa gói cước "${pkg?.name}"?`)) {
       const updated = packages.filter(p => p.id !== id);
       savePackages(updated);
+      setToast({ message: `Đã xóa gói cước "${pkg?.name}"!`, type: 'success' });
     }
   };
 
@@ -117,7 +121,7 @@ export default function PackageManagement() {
     if (!editingPackage) return;
 
     if (!editingPackage.name || !editingPackage.price) {
-      alert('Vui lòng điền đầy đủ thông tin!');
+      setToast({ message: 'Vui lòng điền đầy đủ thông tin!', type: 'error' });
       return;
     }
 
@@ -142,6 +146,13 @@ export default function PackageManagement() {
 
   return (
     <div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl font-bold">Quản Lý Gói Cước</h2>
         <div className="flex gap-3">
@@ -155,7 +166,7 @@ export default function PackageManagement() {
               link.download = `packages_${new Date().toISOString().split('T')[0]}.json`;
               link.click();
               URL.revokeObjectURL(url);
-              alert('Đã xuất file JSON thành công!');
+              setToast({ message: 'Đã xuất file JSON thành công!', type: 'success' });
             }}
             className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
           >
@@ -183,17 +194,17 @@ export default function PackageManagement() {
                           // Lưu lên server để đồng bộ với tất cả thiết bị
                           const success = await savePackagesToServer(imported);
                           if (success) {
-                            alert('Đã import thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.');
+                            setToast({ message: 'Đã import thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.', type: 'success' });
                           } else {
-                            alert('Đã import vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
+                            setToast({ message: 'Đã import vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại.', type: 'warning' });
                             notifyPackagesUpdated();
                           }
                         }
                       } else {
-                        alert('File không hợp lệ!');
+                        setToast({ message: 'File không hợp lệ! Vui lòng chọn file JSON đúng định dạng.', type: 'error' });
                       }
                     } catch (error) {
-                      alert('Lỗi đọc file!');
+                      setToast({ message: 'Lỗi đọc file! Vui lòng kiểm tra file và thử lại.', type: 'error' });
                     }
                   };
                   reader.readAsText(file);
