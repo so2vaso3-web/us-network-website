@@ -33,9 +33,8 @@ export default function ChatManagement() {
 
   useEffect(() => {
     loadMessages();
-    // Auto-refresh messages every 5 seconds
-    // Polling mỗi 2 giây để cập nhật nhanh hơn
-    const interval = setInterval(loadMessages, 2000);
+    // Polling mỗi 1 giây để cập nhật NHANH HƠN - khách nhắn tới hiển thị ngay
+    const interval = setInterval(loadMessages, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -67,6 +66,33 @@ export default function ChatManagement() {
           if (typeof window !== 'undefined') {
             localStorage.setItem('chatMessages', JSON.stringify(messages));
           }
+        }
+      }
+      
+      // MERGE với localStorage để không mất messages
+      if (typeof window !== 'undefined') {
+        const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        if (Array.isArray(localMessages) && localMessages.length > 0) {
+          // Merge: Ưu tiên server, nhưng giữ lại local nếu server không có
+          const messageMap = new Map<string, Message>();
+          
+          // Thêm messages từ server trước (ưu tiên)
+          messages.forEach((m: Message) => {
+            messageMap.set(m.id, m);
+          });
+          
+          // Thêm messages từ local nếu chưa có trong server
+          localMessages.forEach((m: Message) => {
+            if (!messageMap.has(m.id)) {
+              messageMap.set(m.id, m);
+            }
+          });
+          
+          // Convert map to array
+          messages = Array.from(messageMap.values());
+          
+          // Update localStorage với merged data
+          localStorage.setItem('chatMessages', JSON.stringify(messages));
         }
       }
       
@@ -125,19 +151,71 @@ export default function ChatManagement() {
           );
           
           setConversations(convs);
+          
+          // Update selected conversation nếu đang mở
+          if (selectedConversation) {
+            const updatedConv = convs.find(c => c.visitorId === selectedConversation.visitorId);
+            if (updatedConv) {
+              setSelectedConversation(updatedConv);
+            }
+          }
         } catch (e) {
           console.error('Error processing messages:', e);
-          setAllMessages([]);
-          setConversations([]);
+          // KHÔNG clear messages nếu có lỗi, giữ lại để không mất
+          // setAllMessages([]);
+          // setConversations([]);
         }
       } else {
+        // Chỉ clear nếu thực sự không có messages
         setAllMessages([]);
         setConversations([]);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
-      setAllMessages([]);
-      setConversations([]);
+      // KHÔNG clear messages nếu có lỗi, load từ localStorage
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setAllMessages(parsed);
+              // Process conversations từ local
+              const conversationMap = new Map<string, Conversation>();
+              parsed.forEach((msg: Message) => {
+                if (!msg.visitorId) return;
+                if (!conversationMap.has(msg.visitorId)) {
+                  const customerMsg = parsed.find((m: Message) => m.visitorId === msg.visitorId && !m.isAdmin);
+                  conversationMap.set(msg.visitorId, {
+                    visitorId: msg.visitorId,
+                    name: customerMsg?.name || 'Anonymous',
+                    email: customerMsg?.email || '',
+                    lastMessage: msg.message,
+                    lastMessageTime: msg.timestamp,
+                    unreadCount: 0,
+                    messages: [],
+                  });
+                }
+                const conv = conversationMap.get(msg.visitorId)!;
+                conv.messages.push(msg);
+                if (msg.timestamp > conv.lastMessageTime) {
+                  conv.lastMessage = msg.message;
+                  conv.lastMessageTime = msg.timestamp;
+                }
+                if (!msg.read && !msg.isAdmin) {
+                  conv.unreadCount++;
+                }
+              });
+              const convs = Array.from(conversationMap.values()).sort((a, b) => 
+                new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+              );
+              setConversations(convs);
+            }
+          } catch (e) {
+            console.error('Error loading from localStorage:', e);
+          }
+        }
+      }
     }
   };
 
