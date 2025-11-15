@@ -343,14 +343,25 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     if (step === 'payment-method' && paymentMethod === 'paypal' && typeof window !== 'undefined' && !paypalLoaded) {
       try {
         // Get settings from hook or localStorage fallback
-        const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+        // QUAN TRỌNG: Ưu tiên localStorage vì có sensitive fields (paypalClientSecret)
+        // Server settings KHÔNG BAO GIỜ có sensitive fields do sanitize
+        let currentSettings: any = null;
+        
+        if (typeof window !== 'undefined') {
           try {
             const local = localStorage.getItem('adminSettings');
-            return local ? JSON.parse(local) : null;
+            if (local) {
+              currentSettings = JSON.parse(local);
+            }
           } catch {
-            return null;
+            // Ignore
           }
-        })() : null);
+        }
+        
+        // Fallback to settings from hook if localStorage empty
+        if (!currentSettings) {
+          currentSettings = settings;
+        }
 
         if (!currentSettings) {
           console.error('PayPal: Settings not found');
@@ -459,15 +470,25 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
         container.innerHTML = '';
         container.removeAttribute('data-paypal-rendered');
 
-        // Get settings from hook or localStorage fallback
-        const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+        // QUAN TRỌNG: Ưu tiên localStorage vì có sensitive fields (paypalClientSecret)
+        // Server settings KHÔNG BAO GIỜ có sensitive fields do sanitize
+        let currentSettings: any = null;
+        
+        if (typeof window !== 'undefined') {
           try {
             const local = localStorage.getItem('adminSettings');
-            return local ? JSON.parse(local) : null;
+            if (local) {
+              currentSettings = JSON.parse(local);
+            }
           } catch {
-            return null;
+            // Ignore
           }
-        })() : null);
+        }
+        
+        // Fallback to settings from hook if localStorage empty
+        if (!currentSettings) {
+          currentSettings = settings;
+        }
 
         if (!currentSettings) {
           console.error('PayPal: Settings not found');
@@ -1179,16 +1200,31 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                           <h5 className="font-medium text-gray-300 mb-1">PayPal Integration</h5>
                           <p className="text-gray-400 text-sm leading-relaxed">
                             {(() => {
-                              const currentSettings = settings || (typeof window !== 'undefined' ? (() => {
+                              // QUAN TRỌNG: Ưu tiên localStorage vì có sensitive fields (paypalClientSecret)
+                              // Server settings KHÔNG BAO GIỜ có sensitive fields do sanitize
+                              let currentSettings: any = null;
+                              
+                              if (typeof window !== 'undefined') {
                                 try {
                                   const local = localStorage.getItem('adminSettings');
-                                  return local ? JSON.parse(local) : null;
+                                  if (local) {
+                                    currentSettings = JSON.parse(local);
+                                  }
                                 } catch {
-                                  return null;
+                                  // Ignore
                                 }
-                              })() : null);
+                              }
                               
-                              if (currentSettings?.paypalClientId && currentSettings?.paypalClientSecret) {
+                              // Fallback to settings from hook if localStorage empty
+                              if (!currentSettings || (!currentSettings.paypalClientId && !currentSettings.paypalClientSecret)) {
+                                currentSettings = settings;
+                              }
+                              
+                              // Check PayPal settings - paypalClientSecret chỉ có trong localStorage
+                              const hasClientId = currentSettings?.paypalClientId && currentSettings.paypalClientId.trim() !== '';
+                              const hasClientSecret = currentSettings?.paypalClientSecret && currentSettings.paypalClientSecret.trim() !== '';
+                              
+                              if (hasClientId && hasClientSecret) {
                                 const mode = currentSettings.paypalMode === 'live' ? 'Live (Production)' : 'Sandbox (Test)';
                                 return `PayPal is configured in ${mode} mode. Click the PayPal button below to complete your payment.`;
                               } else {
