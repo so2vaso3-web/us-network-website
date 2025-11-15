@@ -31,9 +31,73 @@ export default function SettingsManagement() {
     }
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem('adminSettings', JSON.stringify(settings));
-    alert('Đã lưu cài đặt thành công! Vui lòng refresh trang mua để xem thay đổi.');
+  const handleSave = async () => {
+    const settingsJson = JSON.stringify(settings);
+    localStorage.setItem('adminSettings', settingsJson);
+    
+    // Also save to server for cross-device sync - PRIORITY
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings }),
+      });
+      
+      if (response.ok) {
+        console.log('Settings saved to server successfully');
+        
+        // Dispatch global event to force all devices to sync immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('forceSettingsSync', { 
+            detail: { settings, timestamp: Date.now() } 
+          }));
+        }
+      } else {
+        console.error('Failed to save settings to server');
+        alert('Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error saving settings to server:', error);
+      alert('Lỗi: Không thể lưu settings lên server. Vui lòng thử lại.');
+      return;
+    }
+    
+    // Also save to sessionStorage for cross-tab sync
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('sharedAdminSettings', settingsJson);
+        // Set a timestamp to track when settings were last updated
+        sessionStorage.setItem('settingsLastUpdated', Date.now().toString());
+      } catch (e) {
+        console.log('SessionStorage not available');
+      }
+    }
+    
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('settingsUpdated', { 
+        detail: { settings, timestamp: Date.now() } 
+      }));
+      
+      // Use BroadcastChannel to sync across tabs/windows
+      try {
+        const channel = new BroadcastChannel('settings-sync');
+        channel.postMessage({
+          type: 'settingsUpdated',
+          timestamp: Date.now(),
+          settings: settings
+        });
+        channel.close();
+      } catch (e) {
+        console.log('BroadcastChannel not supported, using fallback');
+      }
+    }
+    
+    alert('Đã lưu cài đặt thành công! Tất cả thiết bị sẽ tự động cập nhật trong vòng 1 giây.');
   };
 
   const handleLogoUpload = (carrier: string, file: File | null) => {

@@ -175,7 +175,7 @@ export default function ChatWidget() {
       {isOpen && (
         <div
           className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 bg-[#1a1f3a] rounded-lg sm:rounded-xl border border-gray-700 shadow-2xl flex flex-col transition-all duration-300 ${
-            isMinimized ? 'w-80 h-12' : 'w-80 sm:w-96 h-[500px] sm:h-[600px]'
+            isMinimized ? 'w-[calc(100vw-2rem)] sm:w-80 h-12' : 'w-[calc(100vw-2rem)] sm:w-80 md:w-96 h-[500px] sm:h-[550px] md:h-[600px] max-w-[95vw] sm:max-w-none'
           }`}
         >
           {/* Chat Header */}
@@ -253,14 +253,14 @@ export default function ChatWidget() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your Name"
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                       />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Your Email"
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                       />
                     </div>
                   </>
@@ -277,7 +277,7 @@ export default function ChatWidget() {
                       }
                     }}
                     placeholder="Type your message..."
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                   />
                   <button
                     onClick={handleSendMessage}

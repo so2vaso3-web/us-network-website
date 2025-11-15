@@ -16,32 +16,105 @@ export default function ContactSection() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const websiteContent = localStorage.getItem('websiteContent');
-      if (websiteContent) {
-        try {
-          const parsed = JSON.parse(websiteContent);
-          if (parsed.contact) {
-            setContent(parsed.contact);
+      const loadContent = () => {
+        const websiteContent = localStorage.getItem('websiteContent');
+        if (websiteContent) {
+          try {
+            const parsed = JSON.parse(websiteContent);
+            if (parsed.contact) {
+              setContent(parsed.contact);
+            }
+          } catch (e) {
+            console.error('Error parsing website content:', e);
           }
-        } catch (e) {
-          console.error('Error parsing website content:', e);
         }
-      }
 
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          setContactInfo({
-            email: parsed.contactEmail || 'support@usmobilenetworks.com',
-            phone: parsed.contactPhone || '1-800-456-7890',
-            address: parsed.address || '350 5th Avenue, Suite 7710, New York, NY 10118',
-            businessHours: parsed.businessHours || 'Monday - Friday: 9:00 AM - 6:00 PM EST',
-          });
-        } catch (e) {
-          console.error('Error loading contact info:', e);
+        const settings = localStorage.getItem('adminSettings');
+        if (settings) {
+          try {
+            const parsed = JSON.parse(settings);
+            setContactInfo({
+              email: parsed.contactEmail || 'support@usmobilenetworks.com',
+              phone: parsed.contactPhone || '1-800-456-7890',
+              address: parsed.address || '350 5th Avenue, Suite 7710, New York, NY 10118',
+              businessHours: parsed.businessHours || 'Monday - Friday: 9:00 AM - 6:00 PM EST',
+            });
+          } catch (e) {
+            console.error('Error loading contact info:', e);
+          }
         }
+      };
+
+      // Load immediately
+      loadContent();
+
+      // Listen for storage changes (when admin updates settings)
+      window.addEventListener('storage', loadContent);
+      
+      // Also listen for custom event when settings are saved
+      const handleSettingsUpdate = () => {
+        loadContent();
+      };
+      window.addEventListener('settingsUpdated', handleSettingsUpdate);
+      
+      // Use BroadcastChannel to sync across tabs/windows
+      let broadcastChannel: BroadcastChannel | null = null;
+      try {
+        broadcastChannel = new BroadcastChannel('settings-sync');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data.type === 'settingsUpdated') {
+            loadContent();
+          }
+        };
+      } catch (e) {
+        console.log('BroadcastChannel not supported');
       }
+      
+      // Also sync from server for cross-device sync
+      const syncFromServer = async () => {
+        try {
+          const response = await fetch('/api/settings');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.settings) {
+              const serverSettings = JSON.stringify(data.settings);
+              const currentSettings = localStorage.getItem('adminSettings');
+              
+              // Only update if server has newer settings
+              if (!currentSettings || currentSettings !== serverSettings) {
+                localStorage.setItem('adminSettings', serverSettings);
+                loadContent();
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors, will retry on next interval
+        }
+      };
+      
+      // Listen for force sync event (when admin saves)
+      const handleForceSync = async () => {
+        await syncFromServer();
+      };
+      window.addEventListener('forceSettingsSync', handleForceSync);
+      
+      // Sync from server immediately and then periodically
+      syncFromServer();
+      const serverSyncInterval = setInterval(syncFromServer, 1000); // Check every 1 second for faster sync
+      
+      // Also check periodically in case settings are updated in the same tab
+      const interval = setInterval(loadContent, 200);
+
+      return () => {
+        window.removeEventListener('storage', loadContent);
+        window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+        window.removeEventListener('forceSettingsSync', handleForceSync);
+        if (broadcastChannel) {
+          broadcastChannel.close();
+        }
+        clearInterval(interval);
+        clearInterval(serverSyncInterval);
+      };
     }
   }, []);
 

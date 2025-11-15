@@ -98,50 +98,50 @@ export default function Hero() {
         </div>
         
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-8 sm:mt-12 max-w-5xl mx-auto px-4">
-          <div className="text-center p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 backdrop-blur-md rounded-2xl border border-blue-500/30 hover:border-blue-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-blue-500/30 group relative overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mt-6 sm:mt-8 md:mt-12 max-w-5xl mx-auto px-4">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-blue-500/30 hover:border-blue-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-blue-500/30 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="relative z-10">
-              <i className="fas fa-tower-broadcast text-3xl text-blue-400 mb-3 group-hover:scale-125 transition-transform duration-300"></i>
-              <div className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-2">6+</div>
-              <div className="text-white text-sm font-semibold mb-1">Major Carriers</div>
-              <div className="text-xs text-gray-300">Verizon, AT&T, T-Mobile & more</div>
+              <i className="fas fa-tower-broadcast text-2xl sm:text-3xl text-blue-400 mb-2 sm:mb-3 group-hover:scale-125 transition-transform duration-300"></i>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1 sm:mb-2">6+</div>
+              <div className="text-white text-xs sm:text-sm font-semibold mb-1">Major Carriers</div>
+              <div className="text-[10px] sm:text-xs text-gray-300">Verizon, AT&T, T-Mobile & more</div>
             </div>
           </div>
-          <div className="text-center p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 backdrop-blur-md rounded-2xl border border-purple-500/30 hover:border-purple-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/30 group relative overflow-hidden">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-purple-500/30 hover:border-purple-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/30 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="relative z-10">
-              <i className="fas fa-mobile-alt text-3xl text-purple-400 mb-3 group-hover:scale-125 transition-transform duration-300"></i>
-              <div className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">50+</div>
-              <div className="text-white text-sm font-semibold mb-1">Premium Plans</div>
-              <div className="text-xs text-gray-300">Monthly & annual options</div>
+              <i className="fas fa-mobile-alt text-2xl sm:text-3xl text-purple-400 mb-2 sm:mb-3 group-hover:scale-125 transition-transform duration-300"></i>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-1 sm:mb-2">50+</div>
+              <div className="text-white text-xs sm:text-sm font-semibold mb-1">Premium Plans</div>
+              <div className="text-[10px] sm:text-xs text-gray-300">Monthly & annual options</div>
             </div>
           </div>
-          <div className="text-center p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 backdrop-blur-md rounded-2xl border border-green-500/30 hover:border-green-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-green-500/30 group relative overflow-hidden">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-green-500/30 hover:border-green-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-green-500/30 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 to-green-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="relative z-10">
-              <i className="fas fa-users text-3xl text-green-400 mb-3 group-hover:scale-125 transition-transform duration-300"></i>
-              <div className="text-5xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">50K+</div>
-              <div className="text-white text-sm font-semibold mb-1">Happy Customers</div>
-              <div className="text-xs text-gray-300">Trusted by thousands</div>
+              <i className="fas fa-users text-2xl sm:text-3xl text-green-400 mb-2 sm:mb-3 group-hover:scale-125 transition-transform duration-300"></i>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-1 sm:mb-2">50K+</div>
+              <div className="text-white text-xs sm:text-sm font-semibold mb-1">Happy Customers</div>
+              <div className="text-[10px] sm:text-xs text-gray-300">Trusted by thousands</div>
             </div>
           </div>
-          <div className="text-center p-6 bg-gradient-to-br from-pink-500/10 to-pink-600/5 backdrop-blur-md rounded-2xl border border-pink-500/30 hover:border-pink-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-pink-500/30 group relative overflow-hidden">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-gradient-to-br from-pink-500/10 to-pink-600/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-pink-500/30 hover:border-pink-400/60 transition-all duration-300 hover:transform hover:scale-110 hover:shadow-2xl hover:shadow-pink-500/30 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-pink-500/0 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="relative z-10">
-              <i className="fas fa-signal text-3xl text-pink-400 mb-3 group-hover:scale-125 transition-transform duration-300"></i>
-              <div className="text-5xl font-bold bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text text-transparent mb-2">100%</div>
-              <div className="text-white text-sm font-semibold mb-1">Coverage</div>
-              <div className="text-xs text-gray-300">Nationwide networks</div>
+              <i className="fas fa-signal text-2xl sm:text-3xl text-pink-400 mb-2 sm:mb-3 group-hover:scale-125 transition-transform duration-300"></i>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text text-transparent mb-1 sm:mb-2">100%</div>
+              <div className="text-white text-xs sm:text-sm font-semibold mb-1">Coverage</div>
+              <div className="text-[10px] sm:text-xs text-gray-300">Nationwide networks</div>
             </div>
           </div>
         </div>
 
         {/* Trust Badges */}
-        <div className="mt-10 pt-6 border-t border-white/10 flex flex-wrap items-center justify-center gap-6 text-gray-400 text-sm">
-          <div className="flex items-center gap-2 hover:text-white transition-colors group relative">
-            <i className="fas fa-shield-alt text-green-400"></i>
-            <span>SSL Secured</span>
+        <div className="mt-6 sm:mt-8 md:mt-10 pt-4 sm:pt-5 md:pt-6 border-t border-white/10 flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 text-gray-400 text-xs sm:text-sm px-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 hover:text-white transition-colors group relative">
+            <i className="fas fa-shield-alt text-green-400 text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">SSL Secured</span>
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping scale-150"></div>
               <i className="fas fa-check-circle text-green-400 text-xs cursor-pointer relative group-hover:scale-110 transition-all duration-300" style={{ 
@@ -154,9 +154,9 @@ export default function Hero() {
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
             </div>
           </div>
-          <div className="flex items-center gap-2 hover:text-white transition-colors group relative">
-            <i className="fas fa-lock text-blue-400"></i>
-            <span>PCI Compliant</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 hover:text-white transition-colors group relative">
+            <i className="fas fa-lock text-blue-400 text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">PCI Compliant</span>
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping scale-150"></div>
               <i className="fas fa-check-circle text-green-400 text-xs cursor-pointer relative group-hover:scale-110 transition-all duration-300" style={{ 
@@ -169,9 +169,10 @@ export default function Hero() {
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
             </div>
           </div>
-          <div className="flex items-center gap-2 hover:text-white transition-colors group relative">
-            <i className="fas fa-certificate text-yellow-400"></i>
-            <span>Certified Partners</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 hover:text-white transition-colors group relative">
+            <i className="fas fa-certificate text-yellow-400 text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap hidden sm:inline">Certified Partners</span>
+            <span className="whitespace-nowrap sm:hidden">Certified</span>
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping scale-150"></div>
               <i className="fas fa-check-circle text-green-400 text-xs cursor-pointer relative group-hover:scale-110 transition-all duration-300" style={{ 
@@ -184,9 +185,10 @@ export default function Hero() {
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
             </div>
           </div>
-          <div className="flex items-center gap-2 hover:text-white transition-colors group relative">
-            <i className="fas fa-certificate text-cyan-400"></i>
-            <span>Authorized Reseller</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 hover:text-white transition-colors group relative">
+            <i className="fas fa-certificate text-cyan-400 text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap hidden sm:inline">Authorized Reseller</span>
+            <span className="whitespace-nowrap sm:hidden">Reseller</span>
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping scale-150"></div>
               <i className="fas fa-check-circle text-green-400 text-xs cursor-pointer relative group-hover:scale-110 transition-all duration-300" style={{ 
@@ -199,9 +201,10 @@ export default function Hero() {
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
             </div>
           </div>
-          <div className="flex items-center gap-2 hover:text-white transition-colors group relative">
-            <i className="fas fa-award text-purple-400"></i>
-            <span>Best Service 2025</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 hover:text-white transition-colors group relative">
+            <i className="fas fa-award text-purple-400 text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap hidden sm:inline">Best Service 2025</span>
+            <span className="whitespace-nowrap sm:hidden">Best 2025</span>
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping scale-150"></div>
               <i className="fas fa-check-circle text-green-400 text-xs cursor-pointer relative group-hover:scale-110 transition-all duration-300" style={{ 

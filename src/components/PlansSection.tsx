@@ -90,7 +90,7 @@ export default function PlansSection() {
   const comparePackages = packages.filter(pkg => compareList.includes(pkg.id));
 
   return (
-    <section id="plans" className="py-12 px-4 bg-[#0a0e27] relative -mt-4">
+    <section id="plans" className="pt-4 pb-12 sm:pt-8 md:pt-12 px-0 sm:px-4 bg-[#0a0e27] relative -mt-4">
       {/* Compare Button - Fixed */}
           {compareList.length > 0 && (
             <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-40">
@@ -109,13 +109,13 @@ export default function PlansSection() {
         </div>
       )}
 
-      <div className="container mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+      <div className="container mx-auto px-0 sm:px-4">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent px-4 sm:px-0">
           Choose Your Plan
         </h2>
 
         {/* Filters and Search */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
               {/* Filter Buttons */}
               <div className="flex flex-wrap gap-2 justify-center px-4 sm:px-0">
                 <button
@@ -132,7 +132,7 @@ export default function PlansSection() {
                   <button
                     key={carrier}
                     onClick={() => setFilter(carrier)}
-                    className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all duration-300 font-medium capitalize whitespace-nowrap text-sm sm:text-base min-h-[44px] ${
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all duration-300 font-medium whitespace-nowrap text-sm sm:text-base min-h-[44px] ${
                       filter === carrier 
                         ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50' 
                         : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 hover:border-white/30'
@@ -174,24 +174,24 @@ export default function PlansSection() {
           </div>
         </div>
 
-            {/* Plans Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 px-4 sm:px-0">
-          {filteredAndSortedPackages.length > 0 ? (
-            filteredAndSortedPackages.map(pkg => (
-              <PlanCard
-                key={pkg.id}
-                pkg={pkg}
-                isInCompareList={compareList.includes(pkg.id)}
-                onToggleCompare={handleToggleCompare}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12 text-gray-400">
-              <i className="fas fa-search text-4xl mb-4 opacity-50"></i>
-              <p>No plans found. Try adjusting your filters.</p>
+            {/* Plans Grid - 2 columns on mobile, larger grid on desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-5 lg:gap-6 px-2 sm:px-0">
+              {filteredAndSortedPackages.length > 0 ? (
+                filteredAndSortedPackages.map(pkg => (
+                  <PlanCard
+                    key={pkg.id}
+                    pkg={pkg}
+                    isInCompareList={compareList.includes(pkg.id)}
+                    onToggleCompare={handleToggleCompare}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12 text-gray-400">
+                  <i className="fas fa-search text-4xl mb-4 opacity-50"></i>
+                  <p>No plans found. Try adjusting your filters.</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
       </div>
 
       {/* Compare Modal */}

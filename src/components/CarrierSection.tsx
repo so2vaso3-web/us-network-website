@@ -7,17 +7,90 @@ export default function CarrierSection() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const settings = localStorage.getItem('adminSettings');
-      if (settings) {
-        try {
-          const parsed = JSON.parse(settings);
-          if (parsed.carrierLogos) {
-            setCarrierLogos(parsed.carrierLogos);
+      const loadLogos = () => {
+        const settings = localStorage.getItem('adminSettings');
+        if (settings) {
+          try {
+            const parsed = JSON.parse(settings);
+            if (parsed.carrierLogos) {
+              setCarrierLogos(parsed.carrierLogos);
+            }
+          } catch (e) {
+            console.error('Error loading carrier logos:', e);
           }
-        } catch (e) {
-          console.error('Error loading carrier logos:', e);
         }
+      };
+      
+      // Load immediately
+      loadLogos();
+      
+      // Listen for storage changes (when admin updates settings)
+      window.addEventListener('storage', loadLogos);
+      
+      // Also listen for custom event when settings are saved
+      const handleSettingsUpdate = () => {
+        loadLogos();
+      };
+      window.addEventListener('settingsUpdated', handleSettingsUpdate);
+      
+      // Use BroadcastChannel to sync across tabs/windows
+      let broadcastChannel: BroadcastChannel | null = null;
+      try {
+        broadcastChannel = new BroadcastChannel('settings-sync');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data.type === 'settingsUpdated') {
+            loadLogos();
+          }
+        };
+      } catch (e) {
+        console.log('BroadcastChannel not supported');
       }
+      
+      // Also sync from server for cross-device sync
+      const syncFromServer = async () => {
+        try {
+          const response = await fetch('/api/settings');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.settings) {
+              const serverSettings = JSON.stringify(data.settings);
+              const currentSettings = localStorage.getItem('adminSettings');
+              
+              // Only update if server has newer settings
+              if (!currentSettings || currentSettings !== serverSettings) {
+                localStorage.setItem('adminSettings', serverSettings);
+                loadLogos();
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors, will retry on next interval
+        }
+      };
+      
+      // Listen for force sync event (when admin saves)
+      const handleForceSync = async () => {
+        await syncFromServer();
+      };
+      window.addEventListener('forceSettingsSync', handleForceSync);
+      
+      // Sync from server immediately and then periodically
+      syncFromServer();
+      const serverSyncInterval = setInterval(syncFromServer, 1000); // Check every 1 second for faster sync
+      
+      // Also check periodically in case settings are updated in the same tab
+      const interval = setInterval(loadLogos, 200);
+      
+      return () => {
+        window.removeEventListener('storage', loadLogos);
+        window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+        window.removeEventListener('forceSettingsSync', handleForceSync);
+        if (broadcastChannel) {
+          broadcastChannel.close();
+        }
+        clearInterval(interval);
+        clearInterval(serverSyncInterval);
+      };
     }
   }, []);
 
@@ -58,12 +131,12 @@ export default function CarrierSection() {
         <p className="text-center text-gray-400 mb-8 max-w-2xl mx-auto">
           Partnered with the top mobile network providers in the United States
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
           {carriers.map(carrier => (
             <div
               key={carrier.key}
               onClick={() => handleCarrierClick(carrier.key)}
-              className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:transform hover:scale-105 cursor-pointer group hover:shadow-xl hover:shadow-blue-500/20"
+              className="bg-white/5 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:transform hover:scale-105 cursor-pointer group hover:shadow-xl hover:shadow-blue-500/20"
             >
               <div className="flex flex-col items-center justify-center text-center">
                 {carrierLogos[carrier.key] ? (
@@ -72,16 +145,16 @@ export default function CarrierSection() {
                     <img
                       src={carrierLogos[carrier.key]}
                       alt={carrier.name}
-                      className="w-20 h-20 object-contain mb-4 group-hover:scale-110 transition-transform duration-300"
-                      style={{ filter: 'none' }}
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300"
+                      style={{ filter: 'none', maxWidth: '100%', height: 'auto' }}
                     />
                   </>
                 ) : (
-                  <div className={`w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-4 group-hover:bg-white/20 transition-all duration-300 ${carrier.color}`}>
-                    <i className="fas fa-signal text-3xl"></i>
+                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-white/20 transition-all duration-300 ${carrier.color}`}>
+                    <i className="fas fa-signal text-2xl sm:text-3xl"></i>
                   </div>
                 )}
-                <h3 className="font-bold text-lg group-hover:text-blue-400 transition-colors">{carrier.name}</h3>
+                <h3 className="font-bold text-sm sm:text-lg group-hover:text-blue-400 transition-colors">{carrier.name}</h3>
               </div>
             </div>
           ))}

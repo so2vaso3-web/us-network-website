@@ -68,39 +68,39 @@ export default function TestimonialsSection() {
 
         <div className="relative">
           {/* Testimonial Card */}
-          <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl relative overflow-hidden group">
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 border border-white/10 shadow-2xl relative overflow-hidden group">
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
             <div className="relative z-10">
               {/* Rating Stars */}
-              <div className="flex justify-center gap-1 mb-6">
+              <div className="flex justify-center gap-1 mb-4 sm:mb-6">
                 {[...Array(testimonials[currentIndex].rating)].map((_, i) => (
-                  <i key={i} className="fas fa-star text-yellow-400 text-xl"></i>
+                  <i key={i} className="fas fa-star text-yellow-400 text-lg sm:text-xl"></i>
                 ))}
               </div>
 
               {/* Testimonial Text */}
-              <blockquote className="text-xl md:text-2xl text-gray-200 text-center mb-8 leading-relaxed italic">
+              <blockquote className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 text-center mb-6 sm:mb-8 leading-relaxed italic px-2 sm:px-0">
                 &ldquo;{testimonials[currentIndex].text}&rdquo;
               </blockquote>
 
               {/* Author Info */}
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-3xl text-white shadow-lg">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 sm:pt-8 border-t border-white/10">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-2xl sm:text-3xl text-white shadow-lg">
                     <i className={testimonials[currentIndex].avatar}></i>
                   </div>
                   <div>
-                    <div className="font-bold text-lg">{testimonials[currentIndex].name}</div>
-                    <div className="text-gray-400 text-sm flex items-center gap-2">
+                    <div className="font-bold text-base sm:text-lg">{testimonials[currentIndex].name}</div>
+                    <div className="text-gray-400 text-xs sm:text-sm flex items-center gap-2">
                       <i className="fas fa-map-marker-alt"></i>
                       {testimonials[currentIndex].location}
                     </div>
                   </div>
                 </div>
-                <div className="px-4 py-2 bg-blue-500/20 rounded-xl border border-blue-500/30">
-                  <span className="text-sm text-blue-400 font-semibold">
+                <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-500/20 rounded-lg sm:rounded-xl border border-blue-500/30">
+                  <span className="text-xs sm:text-sm text-blue-400 font-semibold">
                     <i className="fas fa-check-circle mr-1"></i>
                     {testimonials[currentIndex].carrier} Customer
                   </span>
@@ -112,29 +112,29 @@ export default function TestimonialsSection() {
           {/* Navigation Buttons */}
           <button
             onClick={prevTestimonial}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white transition-all duration-300 flex items-center justify-center z-20 hover:scale-110"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white transition-all duration-300 flex items-center justify-center z-20 hover:scale-110 min-w-[44px] min-h-[44px]"
             aria-label="Previous testimonial"
           >
-            <i className="fas fa-chevron-left"></i>
+            <i className="fas fa-chevron-left text-sm sm:text-base"></i>
           </button>
           <button
             onClick={nextTestimonial}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white transition-all duration-300 flex items-center justify-center z-20 hover:scale-110"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white transition-all duration-300 flex items-center justify-center z-20 hover:scale-110 min-w-[44px] min-h-[44px]"
             aria-label="Next testimonial"
           >
-            <i className="fas fa-chevron-right"></i>
+            <i className="fas fa-chevron-right text-sm sm:text-base"></i>
           </button>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-center gap-2 mt-6 sm:mt-8">
             {testimonials.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                className={`rounded-full transition-all duration-300 min-w-[44px] min-h-[44px] flex items-center justify-center ${
                   idx === currentIndex
-                    ? 'bg-blue-500 w-8 scale-110'
-                    : 'bg-white/20 hover:bg-white/40'
+                    ? 'bg-blue-500 w-8 h-2 scale-110'
+                    : 'bg-white/20 hover:bg-white/40 w-2 h-2'
                 }`}
                 aria-label={`Go to testimonial ${idx + 1}`}
               />
@@ -143,30 +143,30 @@ export default function TestimonialsSection() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
-          <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
-            <div className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 md:gap-6 mt-8 sm:mt-10 md:mt-12">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-white/5 rounded-xl border border-white/10">
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1 sm:mb-2">
               50K+
             </div>
-            <div className="text-gray-400 text-sm">Happy Customers</div>
+            <div className="text-gray-400 text-xs sm:text-sm">Happy Customers</div>
           </div>
-          <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
-            <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-white/5 rounded-xl border border-white/10">
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-1 sm:mb-2">
               4.9★
             </div>
-            <div className="text-gray-400 text-sm">Average Rating</div>
+            <div className="text-gray-400 text-xs sm:text-sm">Average Rating</div>
           </div>
-          <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
-            <div className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-white/5 rounded-xl border border-white/10">
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-1 sm:mb-2">
               99.9%
             </div>
-            <div className="text-gray-400 text-sm">Uptime</div>
+            <div className="text-gray-400 text-xs sm:text-sm">Uptime</div>
           </div>
-          <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
-            <div className="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-2">
+          <div className="text-center p-4 sm:p-5 md:p-6 bg-white/5 rounded-xl border border-white/10">
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-1 sm:mb-2">
               24/7
             </div>
-            <div className="text-gray-400 text-sm">Support</div>
+            <div className="text-gray-400 text-xs sm:text-sm">Support</div>
           </div>
         </div>
       </div>

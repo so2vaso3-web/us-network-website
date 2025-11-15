@@ -116,24 +116,24 @@ export default function AdminPage() {
 
       <div className="container mx-auto px-4 py-8 relative z-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 p-4 sm:p-6 bg-white/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 shadow-xl">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-1 sm:mb-2">
               Admin Panel
             </h1>
-            <p className="text-gray-400 text-sm">Quản lý website và đơn hàng</p>
+            <p className="text-gray-400 text-xs sm:text-sm">Quản lý website và đơn hàng</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <Link
               href="/"
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/50 flex items-center gap-2 font-semibold"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/50 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base min-h-[44px]"
             >
               <i className="fas fa-home"></i>
               <span>Về Trang Web</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="px-6 py-3 bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-300 shadow-lg hover:shadow-red-500/50 flex items-center gap-2 font-semibold"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 rounded-lg sm:rounded-xl hover:bg-red-700 transition-all duration-300 shadow-lg hover:shadow-red-500/50 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base min-h-[44px]"
             >
               <i className="fas fa-sign-out-alt"></i>
               <span>Đăng Xuất</span>
@@ -142,78 +142,78 @@ export default function AdminPage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-3 mb-8 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8 p-3 sm:p-4 bg-white/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 shadow-xl">
           <button
             data-tab="dashboard"
             onClick={() => setCurrentPage('dashboard')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] ${
               currentPage === 'dashboard'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-chart-line"></i>
-            <span>Bảng Điều Khiển</span>
+            <i className="fas fa-chart-line text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Bảng Điều Khiển</span>
           </button>
           <button
             data-tab="packages"
             onClick={() => setCurrentPage('packages')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] ${
               currentPage === 'packages'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-box"></i>
-            <span>Quản Lý Gói Cước</span>
+            <i className="fas fa-box text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Quản Lý Gói Cước</span>
           </button>
           <button
             data-tab="orders"
             onClick={() => setCurrentPage('orders')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] ${
               currentPage === 'orders'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-shopping-cart"></i>
-            <span>Quản Lý Đơn Hàng</span>
+            <i className="fas fa-shopping-cart text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Quản Lý Đơn Hàng</span>
           </button>
           <button
             data-tab="content"
             onClick={() => setCurrentPage('content')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] ${
               currentPage === 'content'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-edit"></i>
-            <span>Quản Lý Nội Dung</span>
+            <i className="fas fa-edit text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Quản Lý Nội Dung</span>
           </button>
           <button
             data-tab="settings"
             onClick={() => setCurrentPage('settings')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] ${
               currentPage === 'settings'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-cog"></i>
-            <span>Cài Đặt</span>
+            <i className="fas fa-cog text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Cài Đặt</span>
           </button>
           <button
             data-tab="chat"
             onClick={() => setCurrentPage('chat')}
-            className={`px-5 py-3 rounded-xl transition-all duration-300 font-semibold flex items-center gap-2 relative ${
+            className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl transition-all duration-300 font-semibold flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base min-h-[44px] relative ${
               currentPage === 'chat'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50 scale-105'
                 : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white hover:scale-102'
             }`}
           >
-            <i className="fas fa-comments"></i>
-            <span>Tin Nhắn Chat</span>
+            <i className="fas fa-comments text-sm sm:text-base"></i>
+            <span className="whitespace-nowrap">Tin Nhắn Chat</span>
             {(() => {
               if (typeof window !== 'undefined') {
                 const chatMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
@@ -232,7 +232,7 @@ export default function AdminPage() {
         </div>
 
         {/* Content Area */}
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl">
+        <div className="bg-white/5 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 border border-white/10 shadow-2xl">
           {currentPage === 'dashboard' && <AdminDashboard />}
           {currentPage === 'packages' && <PackageManagement />}
           {currentPage === 'orders' && <OrderManagement />}

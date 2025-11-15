@@ -114,15 +114,15 @@ export default function AdminDashboard() {
   const revenueGrowth = calculateGrowth(stats.monthlyRevenue, previousMonthRevenue);
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
         <div>
-          <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
             Bảng Điều Khiển
           </h2>
-          <p className="text-gray-400 text-sm">Tổng quan về website và đơn hàng</p>
+          <p className="text-gray-400 text-xs sm:text-sm">Tổng quan về website và đơn hàng</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => {
               const data = {
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
               URL.revokeObjectURL(url);
               alert('Đã xuất backup thành công!');
             }}
-            className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] w-full sm:w-auto"
           >
             <i className="fas fa-download"></i>
             <span>Xuất Backup</span>
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
               };
               input.click();
             }}
-            className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] w-full sm:w-auto"
           >
             <i className="fas fa-upload"></i>
             <span>Khôi Phục Backup</span>
@@ -182,143 +182,143 @@ export default function AdminDashboard() {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-6 hover:border-blue-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-blue-500/30 flex items-center justify-center group-hover:bg-blue-500/50 transition-colors">
-              <i className="fas fa-box text-blue-400 text-xl"></i>
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-blue-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-blue-500/30 flex items-center justify-center group-hover:bg-blue-500/50 transition-colors">
+              <i className="fas fa-box text-blue-400 text-sm sm:text-base md:text-xl"></i>
             </div>
-            <span className="text-3xl font-bold text-white">{stats.totalPackages}</span>
+            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{stats.totalPackages}</span>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Tổng Gói Cước</p>
-          <p className="text-gray-500 text-xs">Hiện có trong hệ thống</p>
+          <p className="text-gray-400 text-xs sm:text-sm mb-0.5 sm:mb-1">Tổng Gói Cước</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">Hiện có trong hệ thống</p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-6 hover:border-purple-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-purple-500/30 flex items-center justify-center group-hover:bg-purple-500/50 transition-colors">
-              <i className="fas fa-shopping-cart text-purple-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-purple-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-purple-500/30 flex items-center justify-center group-hover:bg-purple-500/50 transition-colors">
+              <i className="fas fa-shopping-cart text-purple-400 text-sm sm:text-base md:text-sm sm:text-base md:text-xl"></i>
             </div>
-            <span className="text-3xl font-bold text-white">{stats.totalOrders}</span>
+            <span className="text-xl sm:text-2xl md:text-xl sm:text-2xl md:text-3xl font-bold text-white">{stats.totalOrders}</span>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Tổng Đơn Hàng</p>
-          <p className="text-gray-500 text-xs">Tất cả các đơn hàng</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Tổng Đơn Hàng</p>
+          <p className="text-gray-500 text-[10px] sm:text-[10px] sm:text-xs">Tất cả các đơn hàng</p>
         </div>
 
-        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-6 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-yellow-500/30 flex items-center justify-center group-hover:bg-yellow-500/50 transition-colors">
-              <i className="fas fa-clock text-yellow-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-yellow-500/30 flex items-center justify-center group-hover:bg-yellow-500/50 transition-colors">
+              <i className="fas fa-clock text-yellow-400 text-sm sm:text-base md:text-sm sm:text-base md:text-xl"></i>
             </div>
-            <span className="text-3xl font-bold text-white">{stats.pendingOrders}</span>
+            <span className="text-xl sm:text-2xl md:text-xl sm:text-2xl md:text-3xl font-bold text-white">{stats.pendingOrders}</span>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Đơn Chờ Xử Lý</p>
-          <p className="text-gray-500 text-xs">Cần xử lý ngay</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Đơn Chờ Xử Lý</p>
+          <p className="text-gray-500 text-[10px] sm:text-[10px] sm:text-xs">Cần xử lý ngay</p>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 rounded-xl p-6 hover:border-green-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-green-500/30 flex items-center justify-center group-hover:bg-green-500/50 transition-colors">
-              <i className="fas fa-check-circle text-green-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-green-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-green-500/30 flex items-center justify-center group-hover:bg-green-500/50 transition-colors">
+              <i className="fas fa-check-circle text-green-400 text-sm sm:text-base md:text-sm sm:text-base md:text-xl"></i>
             </div>
-            <span className="text-3xl font-bold text-white">{stats.completedOrders}</span>
+            <span className="text-xl sm:text-2xl md:text-xl sm:text-2xl md:text-3xl font-bold text-white">{stats.completedOrders}</span>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Đơn Hoàn Thành</p>
-          <p className="text-gray-500 text-xs">{stats.totalOrders > 0 ? ((stats.completedOrders / stats.totalOrders) * 100).toFixed(1) : 0}% tổng đơn</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Đơn Hoàn Thành</p>
+          <p className="text-gray-500 text-[10px] sm:text-[10px] sm:text-xs">{stats.totalOrders > 0 ? ((stats.completedOrders / stats.totalOrders) * 100).toFixed(1) : 0}% tổng đơn</p>
         </div>
       </div>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-xl p-6 hover:border-indigo-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-indigo-500/30 flex items-center justify-center group-hover:bg-indigo-500/50 transition-colors">
-              <i className="fas fa-users text-indigo-400 text-xl"></i>
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-indigo-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-indigo-500/30 flex items-center justify-center group-hover:bg-indigo-500/50 transition-colors">
+              <i className="fas fa-users text-indigo-400 text-sm sm:text-base md:text-sm sm:text-base md:text-xl"></i>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-white block">{stats.uniqueVisitors}</span>
-              <span className="text-xs text-gray-400">unique</span>
+              <span className="text-lg sm:text-xl md:text-lg sm:text-xl md:text-2xl font-bold text-white block">{stats.uniqueVisitors}</span>
+              <span className="text-[10px] sm:text-[10px] sm:text-xs text-gray-400">unique</span>
             </div>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Lượt Truy Cập</p>
-          <p className="text-gray-500 text-xs">{stats.todayVisits} hôm nay | {stats.totalVisits} tổng</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Lượt Truy Cập</p>
+          <p className="text-gray-500 text-[10px] sm:text-[10px] sm:text-xs">{stats.todayVisits} hôm nay | {stats.totalVisits} tổng</p>
         </div>
 
-        <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-xl p-6 hover:border-cyan-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-500/50 transition-colors">
-              <i className="fas fa-envelope-open text-cyan-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-cyan-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-500/50 transition-colors">
+              <i className="fas fa-envelope-open text-cyan-400 text-sm sm:text-base md:text-xl"></i>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-white block">{stats.unreadMessages}</span>
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-white block">{stats.unreadMessages}</span>
             </div>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Tin Nhắn Chưa Đọc</p>
-          <p className="text-gray-500 text-xs">Cần phản hồi</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Tin Nhắn Chưa Đọc</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">Cần phản hồi</p>
         </div>
 
-        <div className="bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30 rounded-xl p-6 hover:border-red-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-red-500/30 flex items-center justify-center group-hover:bg-red-500/50 transition-colors">
-              <i className="fas fa-times-circle text-red-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-red-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-red-500/30 flex items-center justify-center group-hover:bg-red-500/50 transition-colors">
+              <i className="fas fa-times-circle text-red-400 text-sm sm:text-base md:text-xl"></i>
             </div>
-            <span className="text-3xl font-bold text-white">{stats.cancelledOrders}</span>
+            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{stats.cancelledOrders}</span>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Đơn Đã Hủy</p>
-          <p className="text-gray-500 text-xs">Không thành công</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Đơn Đã Hủy</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">Không thành công</p>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 rounded-xl p-6 hover:border-emerald-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500/50 transition-colors">
-              <i className="fas fa-dollar-sign text-emerald-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-emerald-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500/50 transition-colors">
+              <i className="fas fa-dollar-sign text-emerald-400 text-sm sm:text-base md:text-xl"></i>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-white block">{formatCurrency(stats.totalRevenue)}</span>
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-white block">{formatCurrency(stats.totalRevenue)}</span>
             </div>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Tổng Doanh Thu</p>
-          <p className="text-gray-500 text-xs">Tất cả thời gian</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Tổng Doanh Thu</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">Tất cả thời gian</p>
         </div>
 
-        <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-xl p-6 hover:border-cyan-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-500/50 transition-colors">
-              <i className="fas fa-calendar-alt text-cyan-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-cyan-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-500/50 transition-colors">
+              <i className="fas fa-calendar-alt text-cyan-400 text-sm sm:text-base md:text-xl"></i>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-white block">{formatCurrency(stats.monthlyRevenue)}</span>
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-white block">{formatCurrency(stats.monthlyRevenue)}</span>
               {revenueGrowth !== '0.0' && (
-                <span className={`text-xs font-semibold ${parseFloat(revenueGrowth) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-[10px] sm:text-xs font-semibold ${parseFloat(revenueGrowth) > 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {parseFloat(revenueGrowth) > 0 ? '↑' : '↓'} {Math.abs(parseFloat(revenueGrowth))}%
                 </span>
               )}
             </div>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Doanh Thu Tháng Này</p>
-          <p className="text-gray-500 text-xs">So với tháng trước</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Doanh Thu Tháng Này</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">So với tháng trước</p>
         </div>
 
-        <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/20 border border-pink-500/30 rounded-xl p-6 hover:border-pink-400/50 transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-lg bg-pink-500/30 flex items-center justify-center group-hover:bg-pink-500/50 transition-colors">
-              <i className="fas fa-credit-card text-pink-400 text-xl"></i>
+        <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/20 border border-pink-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-pink-400/50 transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-pink-500/30 flex items-center justify-center group-hover:bg-pink-500/50 transition-colors">
+              <i className="fas fa-credit-card text-pink-400 text-sm sm:text-base md:text-xl"></i>
             </div>
             <div className="text-right">
               <div className="text-sm font-bold text-white">
                 <div className="flex items-center gap-2 justify-end mb-1">
-                  <span className="bg-blue-500/30 px-2 py-1 rounded text-xs">{stats.paypalOrders}</span>
+                  <span className="bg-blue-500/30 px-2 py-1 rounded text-[10px] sm:text-xs">{stats.paypalOrders}</span>
                   <span className="text-gray-400">PayPal</span>
                 </div>
                 <div className="flex items-center gap-2 justify-end">
-                  <span className="bg-orange-500/30 px-2 py-1 rounded text-xs">{stats.cryptoOrders}</span>
+                  <span className="bg-orange-500/30 px-2 py-1 rounded text-[10px] sm:text-xs">{stats.cryptoOrders}</span>
                   <span className="text-gray-400">Crypto</span>
                 </div>
               </div>
             </div>
           </div>
-          <p className="text-gray-400 text-sm mb-1">Phương Thức Thanh Toán</p>
-          <p className="text-gray-500 text-xs">PayPal & Crypto</p>
+          <p className="text-gray-400 text-[10px] sm:text-xs sm:text-sm mb-0.5 sm:mb-1">Phương Thức Thanh Toán</p>
+          <p className="text-gray-500 text-[10px] sm:text-xs">PayPal & Crypto</p>
         </div>
       </div>
 
@@ -343,17 +343,17 @@ export default function AdminDashboard() {
             <i className="fas fa-arrow-right"></i>
           </a>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full border-collapse min-w-full">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Mã Đơn</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Khách Hàng</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Gói Cước</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Giá</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Thanh Toán</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Trạng Thái</th>
-                <th className="text-left p-3 text-sm font-semibold text-gray-300">Ngày</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Mã Đơn</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Khách Hàng</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Gói Cước</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Giá</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Thanh Toán</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Trạng Thái</th>
+                <th className="text-left p-2 sm:p-3 text-[10px] sm:text-xs sm:text-sm font-semibold text-gray-300 whitespace-nowrap">Ngày</th>
               </tr>
             </thead>
             <tbody>
@@ -364,25 +364,25 @@ export default function AdminDashboard() {
                 return recentOrders.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12 text-gray-400">
-                      <i className="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                      <i className="fas fa-inbox text-4xl mb-2 sm:mb-3 opacity-50"></i>
                       <p>Chưa có đơn hàng nào</p>
                     </td>
                   </tr>
                 ) : (
                   recentOrders.map((order: any) => (
                     <tr key={order.orderId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="p-3 text-gray-300 font-mono text-xs">{order.orderId}</td>
+                      <td className="p-3 text-gray-300 font-mono text-[10px] sm:text-xs">{order.orderId}</td>
                       <td className="p-3 text-sm">
                         <div className="font-medium">{order.customerName || order.name || 'N/A'}</div>
-                        <div className="text-xs text-gray-500">{order.customerEmail || order.email || ''}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500">{order.customerEmail || order.email || ''}</div>
                       </td>
                       <td className="p-3 text-sm">
                         <div className="font-medium">{order.planName}</div>
-                        <div className="text-xs text-gray-500 capitalize">{order.carrier}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 capitalize">{order.carrier}</div>
                       </td>
                       <td className="p-3 font-semibold text-white">{formatCurrency(order.price || 0)}</td>
                       <td className="p-3">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        <span className={`px-2 py-1 rounded text-[10px] sm:text-xs font-semibold ${
                           order.paymentMethod === 'paypal' 
                             ? 'bg-blue-500/20 text-blue-400' 
                             : 'bg-orange-500/20 text-orange-400'
@@ -391,7 +391,7 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        <span className={`px-2 py-1 rounded text-[10px] sm:text-xs font-semibold ${
                           order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
                           order.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                           'bg-red-500/20 text-red-400 border border-red-500/30'
@@ -399,7 +399,7 @@ export default function AdminDashboard() {
                           {order.status === 'pending' ? 'Chờ Xử Lý' : order.status === 'completed' ? 'Hoàn Thành' : 'Đã Hủy'}
                         </span>
                       </td>
-                      <td className="p-3 text-gray-400 text-xs">{formatDate(order.createdAt)}</td>
+                      <td className="p-3 text-gray-400 text-[10px] sm:text-xs">{formatDate(order.createdAt)}</td>
                     </tr>
                   ))
                 );

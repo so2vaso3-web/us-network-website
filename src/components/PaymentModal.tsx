@@ -75,25 +75,75 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     }
   }, [paymentMethod, selectedCrypto, step, checkCryptoAddress]);
 
-  // Also listen for localStorage changes (when admin updates settings)
+  // Also listen for localStorage changes and sync from server (when admin updates settings)
   useEffect(() => {
-    if (paymentMethod === 'crypto' && step === 'payment-method' && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const handleStorageChange = () => {
-        const hasAddress = checkCryptoAddress();
-        setHasCryptoAddress(hasAddress);
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
+      };
+      
+      const handleSettingsUpdate = () => {
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
+      };
+      
+      // Sync from server for cross-device sync
+      const syncFromServer = async () => {
+        try {
+          const response = await fetch('/api/settings');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.settings) {
+              const serverSettings = JSON.stringify(data.settings);
+              const currentSettings = localStorage.getItem('adminSettings');
+              
+              // Only update if server has newer settings
+              if (!currentSettings || currentSettings !== serverSettings) {
+                localStorage.setItem('adminSettings', serverSettings);
+                if (paymentMethod === 'crypto' && step === 'payment-method') {
+                  const hasAddress = checkCryptoAddress();
+                  setHasCryptoAddress(hasAddress);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors, will retry on next interval
+        }
+      };
+      
+      // Listen for force sync event (when admin saves)
+      const handleForceSync = async () => {
+        await syncFromServer();
       };
       
       window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('settingsUpdated', handleSettingsUpdate);
+      window.addEventListener('forceSettingsSync', handleForceSync);
+      
+      // Sync from server immediately and then periodically
+      syncFromServer();
+      const serverSyncInterval = setInterval(syncFromServer, 1000); // Check every 1 second
       
       // Also check periodically in case settings are updated in the same tab
       const interval = setInterval(() => {
-        const hasAddress = checkCryptoAddress();
-        setHasCryptoAddress(hasAddress);
+        if (paymentMethod === 'crypto' && step === 'payment-method') {
+          const hasAddress = checkCryptoAddress();
+          setHasCryptoAddress(hasAddress);
+        }
       }, 500);
       
       return () => {
         window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+        window.removeEventListener('forceSettingsSync', handleForceSync);
         clearInterval(interval);
+        clearInterval(serverSyncInterval);
       };
     }
   }, [paymentMethod, step, checkCryptoAddress]);
@@ -308,9 +358,13 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
             return;
           }
           
-          // Load PayPal SDK
+          // Load PayPal SDK with mobile-friendly configuration
           const script = document.createElement('script');
-          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&intent=capture`;
+          // For mobile: use components=buttons only, no popups
+          // For desktop: use full features
+          const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+          const components = isMobile ? 'buttons' : 'buttons,marks,funding-eligibility';
+          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&intent=capture&components=${components}`;
           script.async = true;
           script.defer = true;
           script.onload = () => {
@@ -350,222 +404,234 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
     }
   }, [step, paymentMethod, paypalLoaded]);
 
-      // Render PayPal button directly when SDK is loaded and ready
-      useEffect(() => {
-        // Only render if conditions are met
-        if (step !== 'payment-method' || paymentMethod !== 'paypal' || !paypalLoaded || typeof window === 'undefined' || !(window as any).paypal) {
-          return;
-        }
-        
-        // If button is already rendered and container has button, skip
-        if (paypalButtonRendered && paypalButtonContainerRef.current?.querySelector('div[data-paypal-button]')) {
-          return;
-        }
+  // Render PayPal button directly when SDK is loaded and ready
+  useEffect(() => {
+    // Only render if conditions are met
+    if (step !== 'payment-method' || paymentMethod !== 'paypal' || !paypalLoaded || typeof window === 'undefined' || !(window as any).paypal) {
+      return;
+    }
+    
+    // If button is already rendered and container has button, skip
+    if (paypalButtonRendered && paypalButtonContainerRef.current?.querySelector('div[data-paypal-button]')) {
+      return;
+    }
 
-        const container = paypalButtonContainerRef.current;
-        if (!container) {
-          console.log('PayPal: Container not ready yet');
-          return;
-        }
+    const container = paypalButtonContainerRef.current;
+    if (!container) {
+      console.log('PayPal: Container not ready yet');
+      return;
+    }
 
-        // Ensure container is in DOM
-        if (!document.body.contains(container)) {
-          console.log('PayPal: Container not in DOM yet');
-          return;
-        }
+    // Ensure container is in DOM
+    if (!document.body.contains(container)) {
+      console.log('PayPal: Container not in DOM yet');
+      return;
+    }
 
-        // Clear any existing buttons before rendering new one
-        if (paypalButtonInstanceRef.current) {
+    // Clear any existing buttons before rendering new one
+    if (paypalButtonInstanceRef.current) {
+      try {
+        paypalButtonInstanceRef.current.close();
+      } catch (e) {
+        console.log('PayPal: Error closing previous button instance', e);
+      }
+      paypalButtonInstanceRef.current = null;
+    }
+    
+    // Clear container
+    container.innerHTML = '';
+    container.removeAttribute('data-paypal-rendered');
+
+    const settings = localStorage.getItem('adminSettings');
+    if (!settings) {
+      console.error('PayPal: Settings not found');
+      return;
+    }
+
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(settings);
+    } catch (e) {
+      console.error('PayPal: Error parsing settings', e);
+      return;
+    }
+
+    const clientId = parsed.paypalClientId;
+    if (!clientId) {
+      console.error('PayPal: Client ID not found');
+      return;
+    }
+
+    const currency = parsed.paypalCurrency || 'USD';
+    const returnUrl = parsed.paypalReturnUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/success' : '/payment/success');
+    const cancelUrl = parsed.paypalCancelUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/cancel' : '/payment/cancel');
+    const paypal = (window as any).paypal;
+    const orderId = `ORD-${Date.now()}`;
+
+    console.log('PayPal: Creating button...');
+
+    try {
+      const button = paypal.Buttons({
+        createOrder: (data: any, actions: any) => {
           try {
-            paypalButtonInstanceRef.current.close();
-          } catch (e) {
-            console.log('PayPal: Error closing previous button instance', e);
-          }
-          paypalButtonInstanceRef.current = null;
-        }
-        
-        // Clear container
-        container.innerHTML = '';
-        container.removeAttribute('data-paypal-rendered');
-
-        const settings = localStorage.getItem('adminSettings');
-        if (!settings) {
-          console.error('PayPal: Settings not found');
-          return;
-        }
-
-        let parsed: any = {};
-        try {
-          parsed = JSON.parse(settings);
-        } catch (e) {
-          console.error('PayPal: Error parsing settings', e);
-          return;
-        }
-
-        const clientId = parsed.paypalClientId;
-        if (!clientId) {
-          console.error('PayPal: Client ID not found');
-          return;
-        }
-
-        const currency = parsed.paypalCurrency || 'USD';
-        const returnUrl = parsed.paypalReturnUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/success' : '/payment/success');
-        const cancelUrl = parsed.paypalCancelUrl || (typeof window !== 'undefined' ? window.location.origin + '/payment/cancel' : '/payment/cancel');
-        const paypal = (window as any).paypal;
-        const orderId = `ORD-${Date.now()}`;
-
-        console.log('PayPal: Creating button...');
-
-        try {
-          const button = paypal.Buttons({
-            createOrder: (data: any, actions: any) => {
-              try {
-                console.log('PayPal: Creating order...');
-                const order = {
-                  orderId,
-                  planId: pkg.id,
-                  planName: pkg.name,
-                  carrier: pkg.carrier,
-                  price: pkg.price,
-                  paymentMethod: 'paypal' as const,
-                  status: 'pending' as const,
-                  customerName: customerInfo.name,
-                  customerEmail: customerInfo.email,
-                  customerPhone: customerInfo.phone,
-                  customerNotes: customerInfo.notes,
-                  name: customerInfo.name,
-                  email: customerInfo.email,
-                  phone: customerInfo.phone,
-                  notes: customerInfo.notes,
-                  createdAt: new Date().toISOString(),
-                };
-                
-                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                orders.push(order);
-                localStorage.setItem('orders', JSON.stringify(orders));
-                localStorage.setItem('pendingPayPalOrder', orderId);
-                
-                return actions.order.create({
-                  purchase_units: [{
-                    amount: {
-                      value: pkg.price.toString(),
-                      currency_code: currency,
-                    },
-                    description: `Mobile Plan: ${pkg.name} - ${pkg.carrier}`,
-                    custom_id: orderId,
-                  }],
-                  application_context: {
-                    brand_name: parsed.websiteName || 'US Mobile Networks',
-                    shipping_preference: 'NO_SHIPPING',
-                    user_action: 'PAY_NOW',
-                    return_url: returnUrl,
-                    cancel_url: cancelUrl,
-                  },
-                });
-              } catch (error: any) {
-                console.error('PayPal: Error creating order:', error);
-                throw error;
-              }
-            },
-            onApprove: async (data: any, actions: any) => {
-              try {
-                console.log('PayPal: Order approved, capturing...');
-                const details = await actions.order.capture();
-                
-                const updatedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const orderIndex = updatedOrders.findIndex((o: any) => o.orderId === orderId);
-                if (orderIndex !== -1) {
-                  updatedOrders[orderIndex].paymentId = details.id;
-                  updatedOrders[orderIndex].status = 'completed';
-                  updatedOrders[orderIndex].paymentVerified = true;
-                  updatedOrders[orderIndex].verifiedAt = new Date().toISOString();
-                  localStorage.setItem('orders', JSON.stringify(updatedOrders));
-                }
-                localStorage.removeItem('pendingPayPalOrder');
-                
-                alert(`Payment successful!\n\nTransaction ID: ${details.id}\nOrder ID: ${orderId}\n\nWe will contact you at ${customerInfo.email} to activate your plan.`);
-                
-                if (typeof window !== 'undefined') {
-                  window.location.href = returnUrl;
-                }
-              } catch (error: any) {
-                console.error('PayPal: Capture error:', error);
-                alert('Payment was authorized but capture failed. Please contact support.');
-              }
-            },
-            onError: (err: any) => {
-              console.error('PayPal: Button Error:', err);
-              setPaypalButtonRendered(false);
-              // Show message in modal instead of browser alert
-              setCryptoMessage(`PayPal Error: ${err.message || 'An error occurred during payment. Please try again.'}`);
-              // Clear message after 5 seconds
-              setTimeout(() => {
-                setCryptoMessage('');
-              }, 5000);
-            },
-            onCancel: () => {
-              console.log('PayPal: Payment cancelled');
-              // Don't redirect - just close PayPal popup and keep modal open
-              // User can try again or choose another payment method
-              setPaypalButtonRendered(false);
-              paypalButtonInstanceRef.current = null;
-              if (paypalButtonContainerRef.current) {
-                paypalButtonContainerRef.current.innerHTML = '';
-                paypalButtonContainerRef.current.removeAttribute('data-paypal-rendered');
-              }
-              // Show message in modal instead of browser alert
-              setCryptoMessage('Payment was cancelled. You can try again or choose a different payment method.');
-              // Clear message after 5 seconds
-              setTimeout(() => {
-                setCryptoMessage('');
-              }, 5000);
-              // Force re-render PayPal button after a short delay
-              setTimeout(() => {
-                setPaypalButtonRendered(false);
-              }, 100);
-            },
-          });
-
-          paypalButtonInstanceRef.current = button;
-          
-          // Wait a bit to ensure DOM is stable
-          setTimeout(() => {
-            if (!container || !document.body.contains(container)) {
-              console.error('PayPal: Container removed before render');
-              return;
-            }
-
-            button.render(container).then(() => {
-              console.log('PayPal: Button rendered successfully!');
-              // Mark container as having PayPal button
-              if (container) {
-                container.setAttribute('data-paypal-rendered', 'true');
-              }
-              setPaypalButtonRendered(true);
-            }).catch((err: any) => {
-              console.error('PayPal: Error rendering button:', err);
-              setPaypalButtonRendered(false);
-              paypalButtonInstanceRef.current = null;
-              if (container) {
-                container.removeAttribute('data-paypal-rendered');
-              }
-              if (err.message && err.message.includes('removed from DOM')) {
-                // Don't show alert, just log
-                console.error('PayPal: Container was removed during render');
-              } else {
-                alert(`PayPal Error: ${err.message || 'Failed to render PayPal button. Please refresh the page.'}`);
-              }
+            console.log('PayPal: Creating order...');
+            const order = {
+              orderId,
+              planId: pkg.id,
+              planName: pkg.name,
+              carrier: pkg.carrier,
+              price: pkg.price,
+              paymentMethod: 'paypal' as const,
+              status: 'pending' as const,
+              customerName: customerInfo.name,
+              customerEmail: customerInfo.email,
+              customerPhone: customerInfo.phone,
+              customerNotes: customerInfo.notes,
+              name: customerInfo.name,
+              email: customerInfo.email,
+              phone: customerInfo.phone,
+              notes: customerInfo.notes,
+              createdAt: new Date().toISOString(),
+            };
+            
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            orders.push(order);
+            localStorage.setItem('orders', JSON.stringify(orders));
+            localStorage.setItem('pendingPayPalOrder', orderId);
+            
+            return actions.order.create({
+              purchase_units: [{
+                amount: {
+                  value: pkg.price.toString(),
+                  currency_code: currency,
+                },
+                description: `Mobile Plan: ${pkg.name} - ${pkg.carrier}`,
+                custom_id: orderId,
+              }],
+              application_context: {
+                brand_name: parsed.websiteName || 'US Mobile Networks',
+                shipping_preference: 'NO_SHIPPING',
+                user_action: 'PAY_NOW',
+                return_url: returnUrl,
+                cancel_url: cancelUrl,
+                // Mobile-friendly: prefer redirect over popup
+                landing_page: 'BILLING',
+              },
             });
-          }, 300);
-        } catch (error: any) {
-          console.error('PayPal: Error creating button:', error);
+          } catch (error: any) {
+            console.error('PayPal: Error creating order:', error);
+            throw error;
+          }
+        },
+        onApprove: async (data: any, actions: any) => {
+          try {
+            console.log('PayPal: Order approved, capturing...');
+            const details = await actions.order.capture();
+            
+            const updatedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const orderIndex = updatedOrders.findIndex((o: any) => o.orderId === orderId);
+            if (orderIndex !== -1) {
+              updatedOrders[orderIndex].paymentId = details.id;
+              updatedOrders[orderIndex].status = 'completed';
+              updatedOrders[orderIndex].paymentVerified = true;
+              updatedOrders[orderIndex].verifiedAt = new Date().toISOString();
+              localStorage.setItem('orders', JSON.stringify(updatedOrders));
+            }
+            localStorage.removeItem('pendingPayPalOrder');
+            
+            alert(`Payment successful!\n\nTransaction ID: ${details.id}\nOrder ID: ${orderId}\n\nWe will contact you at ${customerInfo.email} to activate your plan.`);
+            
+            if (typeof window !== 'undefined') {
+              window.location.href = returnUrl;
+            }
+          } catch (error: any) {
+            console.error('PayPal: Capture error:', error);
+            alert('Payment was authorized but capture failed. Please contact support.');
+          }
+        },
+        onError: (err: any) => {
+          console.error('PayPal: Button Error:', err);
           setPaypalButtonRendered(false);
+          // Show message in modal instead of browser alert
+          setCryptoMessage(`PayPal Error: ${err.message || 'An error occurred during payment. Please try again.'}`);
+          // Clear message after 5 seconds
+          setTimeout(() => {
+            setCryptoMessage('');
+          }, 5000);
+        },
+        onCancel: () => {
+          console.log('PayPal: Payment cancelled');
+          // Don't redirect - just close PayPal popup and keep modal open
+          // User can try again or choose another payment method
+          setPaypalButtonRendered(false);
+          paypalButtonInstanceRef.current = null;
+          if (paypalButtonContainerRef.current) {
+            paypalButtonContainerRef.current.innerHTML = '';
+            paypalButtonContainerRef.current.removeAttribute('data-paypal-rendered');
+          }
+          // Show message in modal instead of browser alert
+          setCryptoMessage('Payment was cancelled. You can try again or choose a different payment method.');
+          // Clear message after 5 seconds
+          setTimeout(() => {
+            setCryptoMessage('');
+          }, 5000);
+          // Force re-render PayPal button after a short delay
+          setTimeout(() => {
+            setPaypalButtonRendered(false);
+          }, 100);
+        },
+        // Mobile-friendly: use redirect flow instead of popup
+        style: {
+          layout: 'vertical',
+          color: 'gold',
+          shape: 'rect',
+          label: 'paypal',
+          tagline: false,
+        },
+        // Disable popup on mobile - use redirect instead
+        commit: true,
+      });
+
+      paypalButtonInstanceRef.current = button;
+      
+      // Wait a bit to ensure DOM is stable
+      setTimeout(() => {
+        if (!container || !document.body.contains(container)) {
+          console.error('PayPal: Container removed before render');
+          return;
         }
 
-        // No cleanup needed - button stays in DOM
-        // React will handle cleanup when modal unmounts
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [step, paymentMethod, paypalLoaded, paypalButtonRendered]);
+        button.render(container).then(() => {
+          console.log('PayPal: Button rendered successfully!');
+          // Mark container as having PayPal button
+          if (container) {
+            container.setAttribute('data-paypal-rendered', 'true');
+          }
+          setPaypalButtonRendered(true);
+        }).catch((err: any) => {
+          console.error('PayPal: Error rendering button:', err);
+          setPaypalButtonRendered(false);
+          paypalButtonInstanceRef.current = null;
+          if (container) {
+            container.removeAttribute('data-paypal-rendered');
+          }
+          if (err.message && err.message.includes('removed from DOM')) {
+            // Don't show alert, just log
+            console.error('PayPal: Container was removed during render');
+          } else {
+            alert(`PayPal Error: ${err.message || 'Failed to render PayPal button. Please refresh the page.'}`);
+          }
+        });
+      }, 300);
+    } catch (error: any) {
+      console.error('PayPal: Error creating button:', error);
+      setPaypalButtonRendered(false);
+    }
+
+    // No cleanup needed - button stays in DOM
+    // React will handle cleanup when modal unmounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, paymentMethod, paypalLoaded, paypalButtonRendered]);
 
   const isFormValid = () => {
     return (
@@ -696,29 +762,29 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1f3a] rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative"
+        className="bg-[#1a1f3a] rounded-xl p-2 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Progress indicator - Only show if not success */}
         {!paymentSuccess && (
-          <div className="flex items-center justify-center mb-6 gap-2">
-            <div className={`h-1.5 rounded-full transition-all duration-300 ${step === 'customer-info' ? 'w-12 bg-gray-300' : 'w-8 bg-gray-600'}`}></div>
-            <div className={`h-1.5 rounded-full transition-all duration-300 ${step === 'payment-method' ? 'w-12 bg-gray-300' : 'w-8 bg-gray-600'}`}></div>
+          <div className="flex items-center justify-center mb-2 sm:mb-6 gap-2">
+            <div className={`h-1 rounded-full transition-all duration-300 ${step === 'customer-info' ? 'w-10 bg-gray-300' : 'w-6 bg-gray-600'}`}></div>
+            <div className={`h-1 rounded-full transition-all duration-300 ${step === 'payment-method' ? 'w-10 bg-gray-300' : 'w-6 bg-gray-600'}`}></div>
           </div>
         )}
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-2 sm:mb-6">
           <div>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-white">
+            <h2 className="text-sm sm:text-2xl md:text-3xl font-semibold text-white">
               {paymentSuccess ? 'Order Confirmed' : 'Complete Your Order'}
             </h2>
             {!paymentSuccess && (
-              <p className="text-gray-400 text-xs sm:text-sm mt-1">Step {step === 'customer-info' ? '1' : '2'} of 2</p>
+              <p className="text-gray-400 text-[9px] sm:text-sm mt-0.5">Step {step === 'customer-info' ? '1' : '2'} of 2</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl transition-colors w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700"
+            className="text-gray-400 hover:text-white text-lg sm:text-2xl transition-colors min-w-[32px] min-h-[32px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center rounded hover:bg-gray-700"
           >
             ×
           </button>
@@ -726,21 +792,21 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
         {/* Plan Summary Card - Only show if not success */}
         {!paymentSuccess && (
-          <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div className="mb-2 sm:mb-6 p-2 sm:p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{carrierNames[pkg.carrier]}</div>
-                <h3 className="font-semibold text-lg mb-1 text-white">{pkg.name}</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-semibold text-white">
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1 uppercase tracking-wide truncate">{carrierNames[pkg.carrier]}</div>
+                <h3 className="font-semibold text-sm sm:text-lg mb-0.5 sm:mb-1 text-white truncate">{pkg.name}</h3>
+                <div className="flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-base sm:text-xl font-semibold text-white">
                     ${pkg.price}
                   </span>
-                  <span className="text-gray-400 text-sm">/ {pkg.period}</span>
+                  <span className="text-gray-400 text-[10px] sm:text-sm">/ {pkg.period}</span>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-400 mb-1">Total Amount</div>
-                <div className="text-xl font-semibold text-white">${pkg.price}</div>
+              <div className="text-right ml-2 flex-shrink-0">
+                <div className="text-[9px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total</div>
+                <div className="text-base sm:text-xl font-semibold text-white">${pkg.price}</div>
               </div>
             </div>
           </div>
@@ -790,14 +856,14 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </div>
               </div>
             ) : step === 'customer-info' ? (
-          <div className="space-y-5">
+          <div className="space-y-2.5 sm:space-y-5">
             {/* Important Notice */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-2">
-              <div className="flex items-start gap-3">
-                <i className="fas fa-info-circle text-blue-400 text-xl mt-0.5 flex-shrink-0"></i>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-4 mb-1 sm:mb-2">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <i className="fas fa-info-circle text-blue-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-blue-400 mb-1">Important Notice</h4>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h4 className="font-semibold text-blue-400 mb-0.5 sm:mb-1 text-xs sm:text-base">Important Notice</h4>
+                  <p className="text-gray-300 text-[11px] sm:text-sm leading-relaxed">
                     Please enter <strong className="text-white">accurate and correct information</strong>. This information will be used to activate your mobile plan. Incorrect information may result in delays or failure to receive your service package.
                   </p>
                 </div>
@@ -805,47 +871,47 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1 sm:mb-2 font-medium text-gray-300 text-xs sm:text-base">
                 Full Name <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={customerInfo.name}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.name ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="John Doe"
               />
               {errors.name && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-[10px] sm:text-sm mt-1">
                   {errors.name}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1 sm:mb-2 font-medium text-gray-300 text-xs sm:text-base">
                 Email Address <span className="text-red-400">*</span>
               </label>
               <input
                 type="email"
                 value={customerInfo.email}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.email ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="john.doe@example.com"
               />
               {errors.email && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-[10px] sm:text-sm mt-1">
                   {errors.email}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1 sm:mb-2 font-medium text-gray-300 text-xs sm:text-base">
                 Phone Number <span className="text-red-400">*</span>
               </label>
               <input
@@ -856,29 +922,29 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   setCustomerInfo({ ...customerInfo, phone: formatted });
                 }}
                 maxLength={14}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.phone ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="(123) 456-7890"
               />
-              <p className="text-gray-500 text-xs mt-1.5">
+              <p className="text-gray-500 text-[9px] sm:text-xs mt-1">
                 Please enter a valid US phone number (10 digits). This phone number will be used to activate your mobile plan.
               </p>
               {errors.phone && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-[10px] sm:text-sm mt-1">
                   {errors.phone}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
-                Additional Notes <span className="text-gray-500 text-sm font-normal">(Optional)</span>
+              <label className="block mb-1 sm:mb-2 font-medium text-gray-300 text-xs sm:text-base">
+                Additional Notes <span className="text-gray-500 text-[10px] sm:text-sm font-normal">(Optional)</span>
               </label>
               <textarea
                 value={customerInfo.notes}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
-                className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-400 transition-colors resize-none"
+                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-400 transition-colors resize-none text-base"
                 placeholder="Any additional information or special requests..."
                 rows={3}
               />
@@ -887,78 +953,126 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 <button
                   onClick={handleContinue}
                   disabled={!isFormValid()}
-                  className={`w-full px-4 sm:px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 mt-4 sm:mt-6 text-base sm:text-lg min-h-[44px] ${
+                  className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 mt-3 sm:mt-6 text-sm sm:text-base min-h-[44px] ${
                     isFormValid()
                       ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-blue-500/50 cursor-pointer'
                       : 'bg-gray-700/50 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
                   <span>Continue to Payment</span>
-                  <i className={`fas fa-arrow-right text-sm ${isFormValid() ? '' : 'opacity-50'}`}></i>
+                  <i className={`fas fa-arrow-right text-xs sm:text-sm ${isFormValid() ? '' : 'opacity-50'}`}></i>
                 </button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             <div>
-              <h3 className="text-xl font-semibold mb-1 text-white">
+              <h3 className="text-sm sm:text-xl font-semibold mb-0.5 sm:mb-1 text-white">
                 Choose Payment Method
               </h3>
-              <p className="text-gray-400 text-sm">Select your preferred payment method</p>
+              <p className="text-gray-400 text-[10px] sm:text-sm">Select your preferred payment method</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <button
-                onClick={() => setPaymentMethod('paypal')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
-                  paymentMethod === 'paypal'
-                    ? 'border-gray-400 bg-gray-700'
-                    : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'paypal' ? 'bg-blue-600' : 'bg-gray-700'
-                  }`}>
-                    <i className="fab fa-paypal text-2xl text-white"></i>
-                  </div>
-                  <span className="font-medium text-white">PayPal</span>
-                  <span className="text-xs text-gray-400">Secure & Fast</span>
-                  {paymentMethod === 'paypal' && (
-                    <div className="absolute top-2 right-2">
-                      <i className="fas fa-check-circle text-green-400"></i>
-                    </div>
-                  )}
+            {/* PayPal Button - Large and prominent */}
+            <button
+              onClick={() => setPaymentMethod('paypal')}
+              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
+                paymentMethod === 'paypal'
+                  ? 'border-blue-400 bg-blue-600/20 shadow-lg shadow-blue-500/20'
+                  : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  paymentMethod === 'paypal' ? 'bg-blue-600' : 'bg-gray-700'
+                }`}>
+                  <i className="fab fa-paypal text-2xl sm:text-3xl text-white"></i>
                 </div>
-              </button>
-
-              <button
-                onClick={() => setPaymentMethod('crypto')}
-                className={`p-4 rounded-lg border-2 transition-colors relative ${
-                  paymentMethod === 'crypto'
-                    ? 'border-gray-400 bg-gray-700'
-                    : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'crypto' ? 'bg-orange-600' : 'bg-gray-700'
-                  }`}>
-                    <i className="fab fa-bitcoin text-2xl text-white"></i>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white text-base sm:text-lg">PayPal</span>
+                    {paymentMethod === 'paypal' && (
+                      <i className="fas fa-check-circle text-green-400 text-sm"></i>
+                    )}
                   </div>
-                  <span className="font-medium text-white">Cryptocurrency</span>
-                  <span className="text-xs text-gray-400">BTC, ETH, USDT, BNB</span>
-                  {paymentMethod === 'crypto' && (
-                    <div className="absolute top-2 right-2">
-                      <i className="fas fa-check-circle text-green-400"></i>
-                    </div>
-                  )}
+                  <span className="text-gray-400 text-xs sm:text-sm">Secure & Fast Payment</span>
                 </div>
-              </button>
-            </div>
-
-                {/* PayPal Payment */}
                 {paymentMethod === 'paypal' && (
-                  <div className="mt-6 space-y-4">
+                  <div className="text-blue-400">
+                    <i className="fas fa-chevron-right"></i>
+                  </div>
+                )}
+              </div>
+            </button>
+
+            {/* Credit/Debit Card Button - Also via PayPal */}
+            <button
+              onClick={() => setPaymentMethod('paypal')}
+              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
+                paymentMethod === 'paypal'
+                  ? 'border-gray-500 bg-gray-700/50'
+                  : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 border-2 ${
+                  paymentMethod === 'paypal' 
+                    ? 'bg-gray-700 border-gray-500' 
+                    : 'bg-gray-800 border-gray-600'
+                }`}>
+                  <i className="fas fa-credit-card text-xl sm:text-2xl text-white"></i>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white text-base sm:text-lg">Thẻ ghi nợ hoặc tín dụng</span>
+                    {paymentMethod === 'paypal' && (
+                      <i className="fas fa-check-circle text-green-400 text-sm"></i>
+                    )}
+                  </div>
+                  <span className="text-gray-400 text-xs sm:text-sm">Được hỗ trợ bởi PayPal</span>
+                </div>
+                {paymentMethod === 'paypal' && (
+                  <div className="text-gray-400">
+                    <i className="fas fa-chevron-right"></i>
+                  </div>
+                )}
+              </div>
+            </button>
+
+            {/* Cryptocurrency Button */}
+            <button
+              onClick={() => setPaymentMethod('crypto')}
+              className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all relative ${
+                paymentMethod === 'crypto'
+                  ? 'border-orange-400 bg-orange-600/20 shadow-lg shadow-orange-500/20'
+                  : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  paymentMethod === 'crypto' ? 'bg-orange-600' : 'bg-gray-700'
+                }`}>
+                  <i className="fab fa-bitcoin text-2xl sm:text-3xl text-white"></i>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white text-base sm:text-lg">Cryptocurrency</span>
+                    {paymentMethod === 'crypto' && (
+                      <i className="fas fa-check-circle text-green-400 text-sm"></i>
+                    )}
+                  </div>
+                  <span className="text-gray-400 text-xs sm:text-sm">BTC, ETH, USDT, BNB</span>
+                </div>
+                {paymentMethod === 'crypto' && (
+                  <div className="text-orange-400">
+                    <i className="fas fa-chevron-right"></i>
+                  </div>
+                )}
+              </div>
+            </button>
+
+            {/* PayPal Payment */}
+            {paymentMethod === 'paypal' && (
+              <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                     {/* Payment Message (for cancellations, errors, etc.) */}
                     {cryptoMessage && (
                       <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
@@ -1051,16 +1165,16 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     </div>
 
                     {/* Payment Instructions for PayPal */}
-                    <div className="mt-4">
-                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <i className="fas fa-info-circle text-yellow-400 text-xl mt-0.5 flex-shrink-0"></i>
+                    <div className="mt-3 sm:mt-4">
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2.5 sm:p-4">
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <i className="fas fa-info-circle text-yellow-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
                           <div className="flex-1">
-                            <h4 className="font-semibold text-yellow-400 mb-2">Payment Instructions</h4>
-                            <p className="text-gray-300 text-sm mb-2">
+                            <h4 className="font-semibold text-yellow-400 mb-1 sm:mb-2 text-xs sm:text-base">Payment Instructions</h4>
+                            <p className="text-gray-300 text-[11px] sm:text-sm mb-1.5 sm:mb-2">
                               Please complete your payment using the PayPal button below. The amount of <span className="font-bold text-white">${pkg.price} USD</span> will be charged to your PayPal account.
                             </p>
-                            <p className="text-gray-400 text-xs">
+                            <p className="text-gray-400 text-[10px] sm:text-xs">
                               We will contact you at <span className="text-white font-semibold">{customerInfo.email || 'your email'}</span> once payment is confirmed.
                             </p>
                           </div>
@@ -1069,12 +1183,12 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     </div>
 
                     {/* PayPal Integration Info */}
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 mt-4">
-                      <div className="flex items-start gap-3">
-                        <i className="fas fa-info-circle text-gray-400 mt-0.5"></i>
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-2.5 sm:p-4 mt-3 sm:mt-4">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <i className="fas fa-info-circle text-gray-400 text-base sm:text-lg mt-0.5"></i>
                         <div className="flex-1">
-                          <h5 className="font-medium text-gray-300 mb-1">PayPal Integration</h5>
-                          <p className="text-gray-400 text-sm leading-relaxed">
+                          <h5 className="font-medium text-gray-300 mb-0.5 sm:mb-1 text-xs sm:text-base">PayPal Integration</h5>
+                          <p className="text-gray-400 text-[11px] sm:text-sm leading-relaxed">
                             {(() => {
                               if (typeof window !== 'undefined') {
                                 const settings = localStorage.getItem('adminSettings');
@@ -1104,32 +1218,32 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       <>
                         {paypalLoaded && typeof window !== 'undefined' && (window as any).paypal ? (
                           <>
-                            <div ref={paypalButtonContainerRef} id="paypal-button-container" className="mt-4" style={{ minHeight: '50px' }}></div>
+                            <div ref={paypalButtonContainerRef} id="paypal-button-container" className="mt-3 sm:mt-4" style={{ minHeight: '50px' }}></div>
                             {!paypalButtonRendered && (
-                              <div className="mt-2 text-center text-sm text-gray-400">
+                              <div className="mt-2 text-center text-xs sm:text-sm text-gray-400">
                                 <i className="fas fa-spinner fa-spin mr-2"></i>
                                 Loading PayPal button...
                               </div>
                             )}
                           </>
                         ) : !paypalLoaded ? (
-                          <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
-                            <i className="fas fa-spinner fa-spin text-gray-400 text-xl mb-2"></i>
-                            <p className="text-gray-300 text-sm">Loading PayPal SDK...</p>
-                            <p className="text-gray-400 text-xs mt-2">Please wait while we load PayPal checkout</p>
+                          <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
+                            <i className="fas fa-spinner fa-spin text-gray-400 text-lg sm:text-xl mb-2"></i>
+                            <p className="text-gray-300 text-xs sm:text-sm">Loading PayPal SDK...</p>
+                            <p className="text-gray-400 text-[10px] sm:text-xs mt-1.5 sm:mt-2">Please wait while we load PayPal checkout</p>
                           </div>
                         ) : (
-                          <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
-                            <i className="fas fa-exclamation-triangle text-red-400 text-xl mb-2"></i>
-                            <p className="text-gray-300 text-sm">PayPal SDK failed to load</p>
-                            <p className="text-gray-400 text-xs mt-2">Please check your internet connection and try again</p>
+                          <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-center">
+                            <i className="fas fa-exclamation-triangle text-red-400 text-lg sm:text-xl mb-2"></i>
+                            <p className="text-gray-300 text-xs sm:text-sm">PayPal SDK failed to load</p>
+                            <p className="text-gray-400 text-[10px] sm:text-xs mt-1.5 sm:mt-2">Please check your internet connection and try again</p>
                             <button
                               onClick={() => {
                                 setPaypalLoaded(false);
                                 setPaypalButtonRendered(false);
                                 window.location.reload();
                               }}
-                              className="mt-3 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                              className="mt-2 sm:mt-3 px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors text-xs sm:text-sm min-h-[36px] sm:min-h-[44px]"
                             >
                               Reload Page
                             </button>
@@ -1138,11 +1252,11 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       </>
                     )}
                   </div>
-                )}
+            )}
 
             {/* Cryptocurrency Payment */}
             {paymentMethod === 'crypto' && (
-              <div className="mt-6 space-y-6">
+              <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                 {/* Crypto Selection */}
                 <div>
                   <label className="block mb-3 font-medium text-gray-300">Select Cryptocurrency</label>
@@ -1258,10 +1372,23 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                     
                     if (selectedCrypto === 'ethereum') {
                       defaultNetwork = parsed.ethereumNetwork || 'ethereum';
-                      networkOptions = [
-                        { value: 'ethereum', label: 'ETH - Ethereum (ERC20)' },
-                        { value: 'bsc', label: 'BSC - Binance Smart Chain (BEP20)' },
-                      ];
+                      // Chỉ hiển thị mạng đã được cấu hình trong admin settings
+                      const configuredNetwork = parsed.ethereumNetwork || 'ethereum';
+                      if (configuredNetwork === 'ethereum') {
+                        networkOptions = [
+                          { value: 'ethereum', label: 'ETH - Ethereum (ERC20)' },
+                        ];
+                      } else if (configuredNetwork === 'bsc') {
+                        networkOptions = [
+                          { value: 'bsc', label: 'BSC - Binance Smart Chain (BEP20)' },
+                        ];
+                      } else {
+                        // Fallback: hiển thị cả 2 nếu không rõ
+                        networkOptions = [
+                          { value: 'ethereum', label: 'ETH - Ethereum (ERC20)' },
+                          { value: 'bsc', label: 'BSC - Binance Smart Chain (BEP20)' },
+                        ];
+                      }
                     } else if (selectedCrypto === 'usdt') {
                       defaultNetwork = parsed.usdtNetwork || 'tron';
                       networkOptions = [
@@ -1285,7 +1412,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                           <select
                             value={currentNetwork}
                             onChange={(e) => setSelectedNetwork(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-gray-400 transition-colors appearance-none cursor-pointer pr-10 network-select"
+                            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-gray-400 transition-colors appearance-none cursor-pointer pr-10 network-select text-base"
                           >
                             {networkOptions.map((option) => (
                               <option key={option.value} value={option.value} className="bg-gray-800 text-white">
@@ -1521,6 +1648,10 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
               })()}
             </div>
           </div>
+            )}
+          </div>
+          </div>
+          )}
         )}
       </div>
     </div>
