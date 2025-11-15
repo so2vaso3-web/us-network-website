@@ -33,10 +33,10 @@ export default function SettingsManagement() {
       const autoRestore = async () => {
         try {
           // BƯỚC 1: Ưu tiên load từ SERVER (Vercel KV) trước - PERSISTENT STORAGE
+          // Lưu ý: Server settings KHÔNG có sensitive fields (paypalClientSecret, telegramBotToken) do sanitize
           const hasServerData = serverSettings && Object.keys(serverSettings).length > 0 && 
-            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.paypalClientSecret || 
-             serverSettings.telegramBotToken || serverSettings.paypalEnabled !== undefined || 
-             serverSettings.cryptoEnabled !== undefined);
+            (serverSettings.websiteName || serverSettings.paypalClientId || 
+             serverSettings.paypalEnabled !== undefined || serverSettings.cryptoEnabled !== undefined);
           
           // BƯỚC 2: Load từ localStorage (fallback/cache)
           let localSettingsData: Partial<AdminSettings> | null = null;
@@ -115,7 +115,7 @@ export default function SettingsManagement() {
             } as AdminSettings;
           } else if (hasServerData && localSettingsData) {
             // Nếu cả 2 đều có, merge: localStorage (priority) > server
-            // QUAN TRỌNG: Bảo vệ sensitive fields từ localStorage (vì server không trả về do sanitize)
+            // QUAN TRỌNG: Bảo vệ sensitive fields từ localStorage (vì server KHÔNG BAO GIỜ trả về do sanitize)
             const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
               ? localSettingsData.paypalMode 
               : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
@@ -127,17 +127,22 @@ export default function SettingsManagement() {
                   ? serverSettings.cryptoGateway 
                   : 'manual');
             
-            // Merge với priority: localStorage sensitive fields > server > localStorage other fields
+            // Merge với priority: localStorage (FULL, có sensitive fields) > server (không có sensitive fields)
+            // QUAN TRỌNG: localStorage luôn có sensitive fields, server KHÔNG BAO GIỜ có (do sanitize)
             mergedSettings = { 
               ...defaultSettings, 
               ...serverSettings, // Server settings (không có sensitive fields do sanitize)
-              ...localSettingsData, // localStorage OVERRIDE (có sensitive fields) - priority cao nhất
-              // Đảm bảo sensitive fields từ localStorage được giữ lại
-              paypalClientSecret: localSettingsData.paypalClientSecret || serverSettings?.paypalClientSecret,
-              telegramBotToken: localSettingsData.telegramBotToken || serverSettings?.telegramBotToken,
+              ...localSettingsData, // localStorage OVERRIDE TẤT CẢ (có sensitive fields) - priority cao nhất
+              // Đảm bảo sensitive fields từ localStorage được giữ lại (server không có)
+              paypalClientSecret: localSettingsData.paypalClientSecret || undefined,
+              telegramBotToken: localSettingsData.telegramBotToken || undefined,
+              paypalClientId: localSettingsData.paypalClientId || serverSettings?.paypalClientId,
+              telegramChatId: localSettingsData.telegramChatId || serverSettings?.telegramChatId,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             } as AdminSettings;
+            
+            console.log('🔄 Merge settings: Server + localStorage (localStorage priority)');
           } else if (hasServerData && serverSettings) {
             // Chỉ có server data
             const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
