@@ -190,6 +190,9 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
         if (errorMsg.includes('Invalid URL') || errorMsg.includes('ENOTFOUND') || errorMsg.includes('ECONNREFUSED')) {
           throw new Error(`Redis connection failed: Invalid URL or connection refused. Please check REDIS_URL in environment variables.`);
         }
+        if (errorMsg.includes('WRONGPASS') || errorMsg.includes('invalid username-password')) {
+          throw new Error(`Redis authentication failed: Invalid username or password in REDIS_URL. Please verify the credentials in your Redis database dashboard and update REDIS_URL in Vercel environment variables.`);
+        }
         throw new Error(`Redis connection failed: ${errorMsg}`);
       }
     }

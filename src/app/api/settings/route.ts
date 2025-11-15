@@ -199,6 +199,8 @@ export async function POST(request: NextRequest) {
       userFriendlyError = 'Redis URL is invalid. Please check REDIS_URL in Vercel environment variables. It must start with redis:// or rediss://.';
     } else if (errorMessage.includes('connection refused') || errorMessage.includes('ENOTFOUND')) {
       userFriendlyError = 'Cannot connect to Redis server. Please verify REDIS_URL is correct and Redis database is running.';
+    } else if (errorMessage.includes('WRONGPASS') || errorMessage.includes('invalid username-password') || errorMessage.includes('authentication failed')) {
+      userFriendlyError = 'Redis authentication failed: Invalid username or password. Please check REDIS_URL credentials in Vercel environment variables. Get the correct URL from your Redis database dashboard.';
     }
     
     // Return detailed error for debugging
