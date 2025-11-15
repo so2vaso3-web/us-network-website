@@ -71,9 +71,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Merge with existing settings
+    // Merge with existing settings và đảm bảo các boolean fields luôn có giá trị rõ ràng
     const existingSettings = await readSettings();
-    const updatedSettings = { ...existingSettings, ...settings };
+    const updatedSettings = { 
+      ...existingSettings, 
+      ...settings,
+      // Đảm bảo các boolean fields không bị undefined hoặc null
+      paypalEnabled: settings.paypalEnabled !== undefined ? settings.paypalEnabled : (existingSettings.paypalEnabled ?? false),
+      cryptoEnabled: settings.cryptoEnabled !== undefined ? settings.cryptoEnabled : (existingSettings.cryptoEnabled ?? false),
+      autoApproveOrders: settings.autoApproveOrders !== undefined ? settings.autoApproveOrders : (existingSettings.autoApproveOrders ?? false),
+      emailNotifications: settings.emailNotifications !== undefined ? settings.emailNotifications : (existingSettings.emailNotifications ?? false),
+    };
 
     saveSettings(updatedSettings);
     

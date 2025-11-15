@@ -25,13 +25,14 @@ export default function SettingsManagement() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
-    if (initialLoad) {
+    if (initialLoad && !isLoading) {
       // Tự động restore từ localStorage nếu server settings rỗng
       const autoRestore = async () => {
         try {
-          // Kiểm tra server settings có data không
+          // Kiểm tra server settings có data không (có ít nhất 1 field quan trọng)
           const hasServerData = serverSettings && Object.keys(serverSettings).length > 0 && 
-            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.telegramBotToken);
+            (serverSettings.websiteName || serverSettings.paypalClientId || serverSettings.telegramBotToken || 
+             serverSettings.paypalEnabled !== undefined || serverSettings.cryptoEnabled !== undefined);
           
           // Nếu server không có data nhưng localStorage có
           if (!hasServerData && typeof window !== 'undefined') {
@@ -40,7 +41,8 @@ export default function SettingsManagement() {
               try {
                 const parsed = JSON.parse(localSettings);
                 // Kiểm tra localStorage có data thực sự không
-                const hasLocalData = parsed && (parsed.websiteName || parsed.paypalClientId || parsed.telegramBotToken);
+                const hasLocalData = parsed && (parsed.websiteName || parsed.paypalClientId || parsed.telegramBotToken ||
+                  parsed.paypalEnabled !== undefined || parsed.cryptoEnabled !== undefined);
                 
                 if (hasLocalData) {
                   console.log('🔄 Tự động restore settings từ localStorage...');
@@ -61,23 +63,80 @@ export default function SettingsManagement() {
             }
           }
           
-          // Load từ server settings
-          if (serverSettings) {
-            setSettings(serverSettings);
+          // Load từ server settings - merge với default để đảm bảo tất cả fields đều có
+          if (serverSettings && Object.keys(serverSettings).length > 0) {
+            // Merge với default settings để đảm bảo tất cả fields đều có
+            // Validate enum fields trước
+            const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
+              ? serverSettings.paypalMode 
+              : 'sandbox';
+            const validCryptoGateway = (serverSettings.cryptoGateway === 'manual' || serverSettings.cryptoGateway === 'bitpay') 
+              ? serverSettings.cryptoGateway 
+              : 'manual';
+            
+            // Tạo object mới không có enum fields để tránh duplicate
+            const { paypalMode: _, cryptoGateway: __, ...restServerSettings } = serverSettings;
+            
+            const mergedSettings: AdminSettings = {
+              // Default values (không có enum fields)
+              websiteName: 'US Mobile Networks',
+              paypalEnabled: true,
+              cryptoEnabled: true,
+              defaultLanguage: 'en',
+              autoApproveOrders: false,
+              emailNotifications: false,
+              ordersPerPage: 10,
+              carrierLogos: {},
+              // Server settings override defaults (không có enum fields)
+              ...restServerSettings,
+              // Thêm validated enum values (sau khi spread để override, không duplicate)
+              paypalMode: validPaypalMode,
+              cryptoGateway: validCryptoGateway,
+            };
+            setSettings(mergedSettings);
+            setInitialLoad(false);
+            setHasLocalChanges(false);
+          } else if (!isLoading) {
+            // Nếu server không có settings sau khi load xong, dùng default
             setInitialLoad(false);
             setHasLocalChanges(false);
           }
         } catch (error) {
           console.error('Error in auto restore:', error);
+          setInitialLoad(false);
         }
       };
       
       autoRestore();
-    } else if (serverSettings && !hasLocalChanges && !initialLoad) {
-      // Chỉ update từ server nếu không có thay đổi local
-      setSettings(serverSettings);
+    } else if (serverSettings && !hasLocalChanges && !initialLoad && !isLoading) {
+      // Chỉ update từ server nếu không có thay đổi local và không đang loading
+      // Merge với settings hiện tại để giữ lại các fields đã có, đặc biệt là boolean fields
+      setSettings(prev => {
+        // Extract và validate enum fields trước, loại bỏ chúng khỏi serverSettings để tránh duplicate
+        const { paypalMode: rawPaypalMode, cryptoGateway: rawCryptoGateway, ...restServerSettings } = serverSettings;
+        const validPaypalMode = (rawPaypalMode === 'live' || rawPaypalMode === 'sandbox') 
+          ? rawPaypalMode 
+          : prev.paypalMode;
+        const validCryptoGateway = (rawCryptoGateway === 'manual' || rawCryptoGateway === 'bitpay') 
+          ? rawCryptoGateway 
+          : prev.cryptoGateway;
+        
+        const merged: AdminSettings = {
+          ...prev,
+          ...restServerSettings, // Server settings override (không có enum fields)
+          // Đảm bảo các boolean fields không bị undefined
+          paypalEnabled: serverSettings.paypalEnabled !== undefined ? serverSettings.paypalEnabled : prev.paypalEnabled,
+          cryptoEnabled: serverSettings.cryptoEnabled !== undefined ? serverSettings.cryptoEnabled : prev.cryptoEnabled,
+          autoApproveOrders: serverSettings.autoApproveOrders !== undefined ? serverSettings.autoApproveOrders : prev.autoApproveOrders,
+          emailNotifications: serverSettings.emailNotifications !== undefined ? serverSettings.emailNotifications : prev.emailNotifications,
+          // Thêm validated enum values
+          paypalMode: validPaypalMode,
+          cryptoGateway: validCryptoGateway,
+        };
+        return merged;
+      });
     }
-  }, [serverSettings, initialLoad, hasLocalChanges]);
+  }, [serverSettings, initialLoad, hasLocalChanges, isLoading]);
 
   // Wrapper để update settings và track local changes
   const updateSettings = (updates: Partial<AdminSettings>) => {
@@ -103,15 +162,27 @@ export default function SettingsManagement() {
     setSaving(true);
     
     try {
+      // Đảm bảo tất cả các fields quan trọng đều có giá trị rõ ràng (đặc biệt là boolean fields)
+      const settingsToSave: AdminSettings = {
+        ...settings,
+        // Đảm bảo các boolean fields luôn có giá trị rõ ràng
+        paypalEnabled: settings.paypalEnabled ?? false,
+        cryptoEnabled: settings.cryptoEnabled ?? false,
+        autoApproveOrders: settings.autoApproveOrders ?? false,
+        emailNotifications: settings.emailNotifications ?? false,
+      };
+      
       // Lưu vào localStorage làm cache tạm thời
-      localStorage.setItem('adminSettings', JSON.stringify(settings));
+      localStorage.setItem('adminSettings', JSON.stringify(settingsToSave));
       
       // Lưu lên server để đồng bộ với tất cả thiết bị
-      const success = await saveSettingsToServer(settings);
+      const success = await saveSettingsToServer(settingsToSave);
       
       if (success) {
         setToast({ message: 'Đã lưu cài đặt thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 10 giây.', type: 'success' });
         setHasLocalChanges(false); // Reset local changes sau khi save thành công
+        // Update local state với settings đã save để đảm bảo đồng bộ
+        setSettings(settingsToSave);
       } else {
         setToast({ message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', type: 'warning' });
         // Vẫn dispatch event để cập nhật trong tab hiện tại
