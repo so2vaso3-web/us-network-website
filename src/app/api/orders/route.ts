@@ -4,9 +4,26 @@ import { storage } from '@/lib/storage';
 const STORAGE_KEY = 'orders';
 
 // Đọc orders từ storage
-function readOrders(): any[] {
+async function readOrders(): Promise<any[]> {
   try {
-    const orders = storage.get(STORAGE_KEY);
+    let orders = storage.get(STORAGE_KEY);
+    
+    // Nếu không có trong cache và có Vercel KV, load từ KV
+    if ((!orders || !Array.isArray(orders)) && 
+        process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      try {
+        const { kv } = require('@vercel/kv');
+        orders = await kv.get(STORAGE_KEY);
+        if (orders && Array.isArray(orders)) {
+          // Update cache
+          storage.set(STORAGE_KEY, orders);
+          return orders;
+        }
+      } catch (e) {
+        console.error('Error loading orders from KV:', e);
+      }
+    }
+    
     if (Array.isArray(orders)) {
       return orders;
     }
@@ -31,7 +48,7 @@ function saveOrders(orders: any[]): void {
 // GET /api/orders - Lấy danh sách orders
 export async function GET() {
   try {
-    const orders = readOrders();
+    const orders = await readOrders();
     return NextResponse.json({ 
       success: true, 
       orders,
@@ -64,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Nếu có order object, thêm vào danh sách
     if (order) {
-      const currentOrders = readOrders();
+      const currentOrders = await readOrders();
       const updatedOrders = [...currentOrders, order];
       saveOrders(updatedOrders);
       return NextResponse.json({ 
@@ -100,7 +117,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const orders = readOrders();
+    const orders = await readOrders();
     const updatedOrders = orders.map((o: any) => 
       o.orderId === orderId ? { ...o, ...updates } : o
     );

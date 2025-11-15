@@ -3,9 +3,27 @@ import { storage } from '@/lib/storage';
 
 const STORAGE_KEY = 'adminSettings';
 
-function readSettings(): any {
+async function readSettings(): Promise<any> {
   try {
-    const settings = storage.get(STORAGE_KEY);
+    let settings = storage.get(STORAGE_KEY);
+    // Nếu là Promise (từ KV adapter), await nó
+    if (settings instanceof Promise) {
+      settings = await settings;
+    }
+    // Nếu là VercelKVAdapter, load từ KV vào cache trước
+    if (settings === null && process.env.KV_REST_API_URL) {
+      // Thử load từ KV
+      try {
+        const { kv } = require('@vercel/kv');
+        settings = await kv.get(STORAGE_KEY);
+        if (settings) {
+          // Update cache
+          storage.set(STORAGE_KEY, settings);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
     if (settings && typeof settings === 'object') {
       return settings;
     }
@@ -26,7 +44,7 @@ function saveSettings(settings: any): void {
 
 export async function GET() {
   try {
-    const settings = readSettings();
+    const settings = await readSettings();
     return NextResponse.json({ 
       success: true, 
       settings,
@@ -54,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Merge with existing settings
-    const existingSettings = readSettings();
+    const existingSettings = await readSettings();
     const updatedSettings = { ...existingSettings, ...settings };
 
     saveSettings(updatedSettings);

@@ -6,9 +6,26 @@ import { storage } from '@/lib/storage';
 const STORAGE_KEY = 'packages';
 
 // Đọc packages từ storage
-function readPackages(): Package[] {
+async function readPackages(): Promise<Package[]> {
   try {
-    const packages = storage.get(STORAGE_KEY);
+    let packages = storage.get(STORAGE_KEY);
+    
+    // Nếu không có trong cache và có Vercel KV, load từ KV
+    if ((!packages || !Array.isArray(packages) || packages.length === 0) && 
+        process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      try {
+        const { kv } = require('@vercel/kv');
+        packages = await kv.get(STORAGE_KEY);
+        if (packages && Array.isArray(packages) && packages.length > 0) {
+          // Update cache
+          storage.set(STORAGE_KEY, packages);
+          return packages;
+        }
+      } catch (e) {
+        console.error('Error loading packages from KV:', e);
+      }
+    }
+    
     if (Array.isArray(packages) && packages.length > 0) {
       return packages;
     }
@@ -33,7 +50,7 @@ function savePackages(packages: Package[]): void {
 // GET /api/packages - Lấy danh sách packages
 export async function GET() {
   try {
-    const packages = readPackages();
+    const packages = await readPackages();
     return NextResponse.json({ 
       success: true, 
       packages,
