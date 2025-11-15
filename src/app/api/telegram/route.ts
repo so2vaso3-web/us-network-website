@@ -1,26 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { storage } from '@/lib/storage';
 
 // Telegram Bot API endpoint
 const TELEGRAM_API_URL = 'https://api.telegram.org/bot';
-
-function ensureDataDir() {
-  const dataDir = join(process.cwd(), 'data');
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
-  }
-}
+const STORAGE_KEY = 'adminSettings';
 
 // Helper function to get Telegram settings from adminSettings
-function getTelegramSettings(): { botToken: string; chatId: string } | null {
+async function getTelegramSettings(): Promise<{ botToken: string; chatId: string } | null> {
   try {
-    ensureDataDir();
-    // Try to read from file first (server-side)
-    const settingsFile = join(process.cwd(), 'data', 'adminSettings.json');
-    if (existsSync(settingsFile)) {
-      const content = readFileSync(settingsFile, 'utf-8');
-      const settings = JSON.parse(content);
+    // Đọc từ storage utility (Vercel KV hoặc file system)
+    let settings = storage.get(STORAGE_KEY);
+    
+    // Nếu là Promise (từ KV adapter), await nó
+    if (settings instanceof Promise) {
+      settings = await settings;
+    }
+    
+    // Nếu là VercelKVAdapter, load từ KV vào cache trước
+    if (settings === null && process.env.KV_REST_API_URL) {
+      try {
+        const { kv } = require('@vercel/kv');
+        settings = await kv.get(STORAGE_KEY);
+        if (settings) {
+          // Update cache
+          storage.set(STORAGE_KEY, settings);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+    
+    if (settings && typeof settings === 'object') {
       if (settings.telegramBotToken && settings.telegramChatId) {
         return {
           botToken: settings.telegramBotToken,
@@ -75,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Telegram settings
-    const telegramSettings = getTelegramSettings();
+    const telegramSettings = await getTelegramSettings();
 
     if (!telegramSettings) {
       return NextResponse.json(
