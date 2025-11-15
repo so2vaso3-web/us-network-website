@@ -18,11 +18,39 @@ export default function AdminDashboard() {
     todayVisits: 0,
     unreadMessages: 0,
   });
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
-  const loadStats = () => {
+  const loadStats = async () => {
     if (typeof window !== 'undefined') {
-      const packages = JSON.parse(localStorage.getItem('packages') || '[]');
-      const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+      // Load packages từ server
+      let packages: any[] = [];
+      try {
+        const packagesResponse = await fetch('/api/packages', { cache: 'no-store' });
+        if (packagesResponse.ok) {
+          const packagesData = await packagesResponse.json();
+          if (packagesData.success) {
+            packages = packagesData.packages || [];
+          }
+        }
+      } catch (e) {
+        console.error('Error loading packages:', e);
+        packages = JSON.parse(localStorage.getItem('packages') || '[]');
+      }
+
+      // Load orders từ server
+      let orders: any[] = [];
+      try {
+        const ordersResponse = await fetch('/api/orders', { cache: 'no-store' });
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          if (ordersData.success) {
+            orders = ordersData.orders || [];
+          }
+        }
+      } catch (e) {
+        console.error('Error loading orders:', e);
+        orders = JSON.parse(localStorage.getItem('orders') || '[]');
+      }
 
       const now = new Date();
       const currentMonth = now.getMonth();
@@ -61,14 +89,36 @@ export default function AdminDashboard() {
         todayVisits: todayVisits || 0,
         unreadMessages: unreadMessages || 0,
       });
+
+      // Cập nhật recent orders
+      const recent = orders
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
+      setRecentOrders(recent);
     }
   };
 
   useEffect(() => {
     loadStats();
-    // Auto-refresh stats every 10 seconds
-    const interval = setInterval(loadStats, 10000);
-    return () => clearInterval(interval);
+    // Auto-refresh stats every 5 seconds để đồng bộ real-time
+    const interval = setInterval(loadStats, 5000);
+    
+    // Lắng nghe event khi packages hoặc orders được cập nhật
+    const handlePackagesUpdated = () => {
+      loadStats();
+    };
+    const handleOrdersUpdated = () => {
+      loadStats();
+    };
+    
+    window.addEventListener('packagesUpdated', handlePackagesUpdated);
+    window.addEventListener('ordersUpdated', handleOrdersUpdated);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('packagesUpdated', handlePackagesUpdated);
+      window.removeEventListener('ordersUpdated', handleOrdersUpdated);
+    };
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -357,19 +407,15 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                const recentOrders = JSON.parse(localStorage.getItem('orders') || '[]')
-                  .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                  .slice(0, 5);
-                return recentOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-gray-400">
-                      <i className="fas fa-inbox text-4xl mb-3 opacity-50"></i>
-                      <p>Chưa có đơn hàng nào</p>
-                    </td>
-                  </tr>
-                ) : (
-                  recentOrders.map((order: any) => (
+              {recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-gray-400">
+                    <i className="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                    <p>Chưa có đơn hàng nào</p>
+                  </td>
+                </tr>
+              ) : (
+                recentOrders.map((order: any) => (
                     <tr key={order.orderId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                       <td className="p-3 text-gray-300 font-mono text-xs">{order.orderId}</td>
                       <td className="p-3 text-sm">
@@ -402,8 +448,7 @@ export default function AdminDashboard() {
                       <td className="p-3 text-gray-400 text-xs">{formatDate(order.createdAt)}</td>
                     </tr>
                   ))
-                );
-              })()}
+              )}
             </tbody>
           </table>
         </div>

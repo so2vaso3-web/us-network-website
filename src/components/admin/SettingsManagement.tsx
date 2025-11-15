@@ -31,9 +31,29 @@ export default function SettingsManagement() {
     }
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Save to localStorage
     localStorage.setItem('adminSettings', JSON.stringify(settings));
-    alert('Đã lưu cài đặt thành công! Vui lòng refresh trang mua để xem thay đổi.');
+    
+    // Also save to server for Telegram API access
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings }),
+      });
+      
+      if (response.ok) {
+        alert('Đã lưu cài đặt thành công! Vui lòng refresh trang mua để xem thay đổi.');
+      } else {
+        alert('Đã lưu vào local storage, nhưng không thể lưu lên server. Chat Telegram có thể không hoạt động.');
+      }
+    } catch (error) {
+      console.error('Error saving settings to server:', error);
+      alert('Đã lưu vào local storage, nhưng không thể lưu lên server. Chat Telegram có thể không hoạt động.');
+    }
   };
 
   const handleLogoUpload = (carrier: string, file: File | null) => {
@@ -552,6 +572,61 @@ export default function SettingsManagement() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Telegram Integration */}
+        <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+          <h3 className="text-xl font-bold mb-4">
+            <i className="fab fa-telegram mr-2 text-blue-400"></i>
+            Tích Hợp Telegram
+          </h3>
+          <p className="text-gray-400 text-sm mb-4">
+            Kết nối chat widget với Telegram để nhận thông báo tin nhắn từ khách hàng.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-2 font-semibold text-sm">
+                Telegram Bot Token <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="password"
+                value={settings.telegramBotToken || ''}
+                onChange={(e) => setSettings({ ...settings, telegramBotToken: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+              />
+              <small className="text-gray-400 text-xs block mt-1">
+                Lấy Bot Token từ <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@BotFather</a> trên Telegram
+              </small>
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold text-sm">
+                Telegram Chat ID <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.telegramChatId || ''}
+                onChange={(e) => setSettings({ ...settings, telegramChatId: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm"
+                placeholder="-1001234567890"
+              />
+              <small className="text-gray-400 text-xs block mt-1">
+                Lấy Chat ID bằng cách nhắn tin cho <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@userinfobot</a> hoặc chat group ID
+              </small>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <h5 className="font-semibold text-sm text-blue-300 mb-2 flex items-center gap-2">
+                <i className="fas fa-info-circle"></i>
+                Hướng dẫn cài đặt:
+              </h5>
+              <ol className="text-xs text-gray-300 space-y-1.5 list-decimal list-inside ml-2">
+                <li>Tạo bot mới: Nhắn <span className="text-blue-400 font-semibold">/newbot</span> cho <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@BotFather</a></li>
+                <li>Copy <span className="text-blue-400 font-semibold">Bot Token</span> và dán vào ô trên</li>
+                <li>Lấy Chat ID: Nhắn tin cho <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@userinfobot</a> hoặc thêm bot vào group và lấy group ID</li>
+                <li>Dán Chat ID vào ô trên và nhấn <span className="text-blue-400 font-semibold">Lưu Cài Đặt</span></li>
+              </ol>
+            </div>
           </div>
         </div>
 

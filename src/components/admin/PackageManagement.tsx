@@ -3,18 +3,38 @@
 import { useState, useEffect } from 'react';
 import { Package } from '@/types';
 import { defaultPackages } from '@/lib/data';
+import { savePackagesToServer, notifyPackagesUpdated } from '@/lib/usePackages';
 
 export default function PackageManagement() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    loadPackages();
-  }, []);
-
-  const loadPackages = () => {
+  const loadPackages = async () => {
     if (typeof window !== 'undefined') {
+      try {
+        // Ưu tiên load từ server
+        const response = await fetch('/api/packages', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
+            setPackages(data.packages);
+            localStorage.setItem('packages', JSON.stringify(data.packages));
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading packages from server:', error);
+      }
+
+      // Fallback: thử load từ localStorage
       const saved = localStorage.getItem('packages');
       if (saved) {
         try {
@@ -24,19 +44,46 @@ export default function PackageManagement() {
             return;
           }
         } catch (e) {
-          console.error('Error loading packages:', e);
+          console.error('Error loading packages from localStorage:', e);
         }
       }
-      // Use default packages if nothing saved
+
+      // Cuối cùng: dùng default packages
       setPackages(defaultPackages);
       localStorage.setItem('packages', JSON.stringify(defaultPackages));
     }
   };
 
-  const savePackages = (updatedPackages: Package[]) => {
+  useEffect(() => {
+    loadPackages();
+    
+    // Lắng nghe event khi packages được cập nhật từ nơi khác
+    const handlePackagesUpdated = () => {
+      loadPackages();
+    };
+    window.addEventListener('packagesUpdated', handlePackagesUpdated);
+    
+    return () => {
+      window.removeEventListener('packagesUpdated', handlePackagesUpdated);
+    };
+  }, []);
+
+  const savePackages = async (updatedPackages: Package[]) => {
     setPackages(updatedPackages);
+    
+    // Lưu vào localStorage làm cache tạm thời
     localStorage.setItem('packages', JSON.stringify(updatedPackages));
-    alert('Đã lưu gói cước thành công!');
+    
+    // Lưu lên server để đồng bộ với tất cả thiết bị
+    const success = await savePackagesToServer(updatedPackages);
+    
+    if (success) {
+      alert('Đã lưu gói cước thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.');
+    } else {
+      alert('Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.');
+      // Vẫn dispatch event để cập nhật trong tab hiện tại
+      notifyPackagesUpdated();
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -124,15 +171,23 @@ export default function PackageManagement() {
                 const file = (e.target as HTMLInputElement).files?.[0];
                 if (file) {
                   const reader = new FileReader();
-                  reader.onload = (event) => {
+                  reader.onload = async (event) => {
                     try {
                       if (!event.target?.result) return;
                       const imported = JSON.parse(event.target.result as string);
                       if (Array.isArray(imported)) {
                         if (confirm(`Bạn có chắc chắn muốn import ${imported.length} gói cước? Gói cước hiện tại sẽ bị thay thế.`)) {
                           setPackages(imported);
+                          // Lưu vào localStorage làm cache tạm thời
                           localStorage.setItem('packages', JSON.stringify(imported));
-                          alert('Đã import thành công!');
+                          // Lưu lên server để đồng bộ với tất cả thiết bị
+                          const success = await savePackagesToServer(imported);
+                          if (success) {
+                            alert('Đã import thành công! Tất cả thiết bị và người dùng sẽ thấy cập nhật trong vòng 5 giây.');
+                          } else {
+                            alert('Đã import vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại.');
+                            notifyPackagesUpdated();
+                          }
                         }
                       } else {
                         alert('File không hợp lệ!');

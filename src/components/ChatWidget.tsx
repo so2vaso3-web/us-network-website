@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Toast from './Toast';
 
 interface Message {
   id: string;
@@ -23,6 +24,7 @@ export default function ChatWidget() {
   const [showNameEmail, setShowNameEmail] = useState(true);
   const [visitorId, setVisitorId] = useState<string>('');
   const [hasWelcomeMessage, setHasWelcomeMessage] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,11 +85,11 @@ export default function ChatWidget() {
     }
   }, [messages, isOpen, isMinimized]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
     
     if (showNameEmail && (!name.trim() || !email.trim())) {
-      alert('Please enter your name and email first');
+      setToast({ message: 'Please enter your name and email first', type: 'warning' });
       return;
     }
 
@@ -114,6 +116,25 @@ export default function ChatWidget() {
     setMessage('');
     if (showNameEmail) {
       setShowNameEmail(false);
+    }
+
+    // Send to Telegram
+    try {
+      await fetch('/api/telegram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newMessage.name,
+          email: newMessage.email,
+          message: newMessage.message,
+          visitorId: newMessage.visitorId,
+        }),
+      });
+    } catch (error) {
+      console.error('Error sending to Telegram:', error);
+      // Không hiển thị lỗi cho user, vẫn cho phép chat hoạt động bình thường
     }
 
     // Auto-reply (optional)
@@ -253,14 +274,14 @@ export default function ChatWidget() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your Name"
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                       />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Your Email"
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                       />
                     </div>
                   </>
@@ -277,7 +298,7 @@ export default function ChatWidget() {
                       }
                     }}
                     placeholder="Type your message..."
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                   />
                   <button
                     onClick={handleSendMessage}
@@ -295,6 +316,14 @@ export default function ChatWidget() {
             </>
           )}
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </>
   );

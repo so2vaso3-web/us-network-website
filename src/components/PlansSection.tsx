@@ -3,27 +3,21 @@
 import { useState, useEffect } from 'react';
 import PlanCard from './PlanCard';
 import CompareModal from './CompareModal';
-import { Package } from '@/types';
-import { defaultPackages } from '@/lib/data';
+import Toast from './Toast';
+import { usePackages } from '@/lib/usePackages';
 
 export default function PlansSection() {
-  const [packages, setPackages] = useState<Package[]>(defaultPackages);
+  // Sử dụng hook để tự động đồng bộ với admin updates
+  const packages = usePackages();
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'name'>('price');
   const [compareList, setCompareList] = useState<string[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Always use defaultPackages and update localStorage
-      // This ensures the latest prices from data.ts are always used
-      setPackages(defaultPackages);
-      localStorage.setItem('packages', JSON.stringify(defaultPackages));
-      
-      // If admin has manually saved packages, we can check for a flag
-      // For now, always use defaults to ensure latest prices are shown
-      
       // Listen for carrier filter events from CarrierSection
       const handleFilterByCarrier = (event: Event) => {
         const customEvent = event as CustomEvent;
@@ -69,7 +63,7 @@ export default function PlansSection() {
         return newList;
       } else {
         if (prev.length >= 4) {
-          alert('You can only compare up to 4 plans at once!');
+          setToast({ message: 'You can only compare up to 4 plans at once!', type: 'warning' });
           return prev;
         }
         return [...prev, planId];
@@ -90,7 +84,7 @@ export default function PlansSection() {
   const comparePackages = packages.filter(pkg => compareList.includes(pkg.id));
 
   return (
-    <section id="plans" className="py-12 px-4 bg-[#0a0e27] relative -mt-4">
+    <section id="plans" className="py-12 px-0 sm:px-4 bg-[#0a0e27] relative -mt-4">
       {/* Compare Button - Fixed */}
           {compareList.length > 0 && (
             <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-40">
@@ -109,7 +103,7 @@ export default function PlansSection() {
         </div>
       )}
 
-      <div className="container mx-auto">
+      <div className="container mx-auto px-0 sm:px-4">
         <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
           Choose Your Plan
         </h2>
@@ -175,14 +169,15 @@ export default function PlansSection() {
         </div>
 
             {/* Plans Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 px-4 sm:px-0">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-0.5 sm:gap-3 md:gap-5 lg:gap-6 px-0 sm:px-4 md:px-0">
           {filteredAndSortedPackages.length > 0 ? (
-            filteredAndSortedPackages.map(pkg => (
+            filteredAndSortedPackages.map((pkg, index) => (
               <PlanCard
                 key={pkg.id}
                 pkg={pkg}
                 isInCompareList={compareList.includes(pkg.id)}
                 onToggleCompare={handleToggleCompare}
+                index={index}
               />
             ))
           ) : (
@@ -200,6 +195,14 @@ export default function PlansSection() {
           packages={comparePackages}
           onClose={() => setShowCompareModal(false)}
           onRemove={handleRemoveFromCompare}
+        />
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </section>

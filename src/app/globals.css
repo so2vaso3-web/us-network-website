@@ -149,16 +149,20 @@ body {
 /* Animations */
 @keyframes slideDown {
   from {
-    transform: translateY(-100%);
+    transform: translateY(-100%) translateX(-50%);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(0) translateX(-50%);
     opacity: 1;
   }
 }
 
 .animate-slideDown {
+  animation: slideDown 0.5s ease-out;
+}
+
+.animate-slide-down {
   animation: slideDown 0.5s ease-out;
 }
 
@@ -305,5 +309,284 @@ select.network-select option:checked {
 
 select.network-select::-ms-expand {
   display: none !important;
+}
+
+/* PayPal Button Styling - Make it more prominent */
+.paypal-button-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Style PayPal buttons to be more prominent */
+.paypal-button-wrapper iframe,
+.paypal-button-wrapper div[data-paypal-button] {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+/* Make PayPal button container more visible */
+.paypal-button-wrapper > div {
+  min-height: 55px !important;
+  border-radius: 16px !important;
+}
+
+/* Style PayPal button itself - make it larger and more prominent */
+.paypal-button-wrapper button,
+.paypal-button-wrapper [role="button"],
+.paypal-button-wrapper iframe {
+  min-height: 55px !important;
+  height: auto !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.paypal-button-wrapper button:hover,
+.paypal-button-wrapper [role="button"]:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(255, 196, 0, 0.4) !important;
+}
+
+/* Style credit/debit card button specifically - Make it stand out more */
+.paypal-button-wrapper [data-funding-source="card"],
+.paypal-button-wrapper [data-funding-source="credit"] {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: 3px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 16px !important;
+  min-height: 55px !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5), 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.paypal-button-wrapper [data-funding-source="card"]::before,
+.paypal-button-wrapper [data-funding-source="credit"]::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -2px !important;
+  left: -2px !important;
+  right: -2px !important;
+  bottom: -2px !important;
+  border-radius: 16px !important;
+  padding: 2px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(102, 126, 234, 0.6)) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  z-index: -1 !important;
+}
+
+.paypal-button-wrapper [data-funding-source="card"]:hover,
+.paypal-button-wrapper [data-funding-source="credit"]:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.7), 0 0 0 3px rgba(102, 126, 234, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Make PayPal logo button more prominent - Add glowing border */
+.paypal-button-wrapper [data-funding-source="paypal"] {
+  background: linear-gradient(135deg, #ffc439 0%, #ffb300 100%) !important;
+  border: 3px solid rgba(255, 196, 57, 0.7) !important;
+  border-radius: 16px !important;
+  min-height: 55px !important;
+  box-shadow: 0 6px 20px rgba(255, 196, 57, 0.5), 0 0 0 2px rgba(255, 196, 57, 0.2) !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.paypal-button-wrapper [data-funding-source="paypal"]::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -2px !important;
+  left: -2px !important;
+  right: -2px !important;
+  bottom: -2px !important;
+  border-radius: 16px !important;
+  padding: 2px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 196, 57, 0.6)) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  z-index: -1 !important;
+}
+
+.paypal-button-wrapper [data-funding-source="paypal"]:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 30px rgba(255, 196, 57, 0.7), 0 0 0 3px rgba(255, 196, 57, 0.3) !important;
+  border-color: rgba(255, 196, 57, 0.9) !important;
+}
+
+/* Target all PayPal SDK rendered buttons */
+.paypal-button-wrapper * {
+  border-radius: 16px !important;
+}
+
+/* Style PayPal buttons with more specific selectors */
+.paypal-button-wrapper [id*="paypal"],
+.paypal-button-wrapper [class*="paypal"],
+.paypal-button-wrapper [class*="PayPal"] {
+  border-radius: 16px !important;
+  min-height: 55px !important;
+}
+
+/* Make credit card button stand out more - Enhanced with glowing border */
+.paypal-button-wrapper [data-funding-source="card"] button,
+.paypal-button-wrapper [data-funding-source="credit"] button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: 3px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 16px !important;
+  color: white !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  padding: 14px 28px !important;
+  min-height: 55px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5), 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.paypal-button-wrapper [data-funding-source="card"] button::before,
+.paypal-button-wrapper [data-funding-source="credit"] button::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -50% !important;
+  left: -50% !important;
+  width: 200% !important;
+  height: 200% !important;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%) !important;
+  animation: shimmer 3s infinite !important;
+}
+
+@keyframes shimmer {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.paypal-button-wrapper [data-funding-source="card"] button:hover,
+.paypal-button-wrapper [data-funding-source="credit"] button:hover {
+  background: linear-gradient(135deg, #7c8ef5 0%, #8a5fb8 100%) !important;
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.7), 0 0 0 3px rgba(102, 126, 234, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Make PayPal button stand out more - Enhanced with glowing border */
+.paypal-button-wrapper [data-funding-source="paypal"] button {
+  background: linear-gradient(135deg, #ffc439 0%, #ffb300 100%) !important;
+  border: 3px solid rgba(255, 196, 57, 0.8) !important;
+  border-radius: 16px !important;
+  min-height: 55px !important;
+  font-size: 16px !important;
+  padding: 14px 28px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 20px rgba(255, 196, 57, 0.5), 0 0 0 2px rgba(255, 196, 57, 0.2) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.paypal-button-wrapper [data-funding-source="paypal"] button::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -50% !important;
+  left: -50% !important;
+  width: 200% !important;
+  height: 200% !important;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%) !important;
+  animation: shimmer 3s infinite !important;
+}
+
+.paypal-button-wrapper [data-funding-source="paypal"] button:hover {
+  background: linear-gradient(135deg, #ffd054 0%, #ffc439 100%) !important;
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 30px rgba(255, 196, 57, 0.7), 0 0 0 3px rgba(255, 196, 57, 0.3) !important;
+  border-color: rgba(255, 196, 57, 1) !important;
+}
+
+/* Mobile specific - make buttons even more prominent */
+@media (max-width: 640px) {
+  .paypal-button-wrapper button,
+  .paypal-button-wrapper [role="button"],
+  .paypal-button-wrapper iframe {
+    min-height: 60px !important;
+    font-size: 16px !important;
+  }
+  
+  .paypal-button-wrapper [data-funding-source="card"],
+  .paypal-button-wrapper [data-funding-source="credit"],
+  .paypal-button-wrapper [data-funding-source="paypal"] {
+    min-height: 60px !important;
+    font-size: 16px !important;
+  }
+  
+  .paypal-button-wrapper [data-funding-source="card"] button,
+  .paypal-button-wrapper [data-funding-source="credit"] button,
+  .paypal-button-wrapper [data-funding-source="paypal"] button {
+    min-height: 60px !important;
+    font-size: 17px !important;
+    padding: 14px 20px !important;
+  }
+}
+
+/* Prevent zoom on mobile when focusing input/textarea - Force font-size >= 16px */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="password"],
+  input[type="search"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Allow smaller font on labels and other text, but not inputs */
+  input::placeholder,
+  textarea::placeholder {
+    font-size: 16px !important;
+    opacity: 0.6 !important;
+  }
+  
+  /* Better touch targets on mobile */
+  input,
+  textarea,
+  button,
+  select {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
+    tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* Smooth scrolling for modal on mobile */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+  
+  /* Prevent autofill overlay from breaking layout */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0px 1000px #1f2937 inset !important;
+    box-shadow: 0 0 0px 1000px #1f2937 inset !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+    font-size: 16px !important;
+  }
 }
 

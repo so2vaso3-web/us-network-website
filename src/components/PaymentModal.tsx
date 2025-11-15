@@ -1,5 +1,7 @@
 'use client';
 
+import { addOrderToServer, updateOrderOnServer } from '@/lib/useOrders';
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Package } from '@/types';
 
@@ -418,7 +420,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
         try {
           const button = paypal.Buttons({
-            createOrder: (data: any, actions: any) => {
+            createOrder: async (data: any, actions: any) => {
               try {
                 console.log('PayPal: Creating order...');
                 const order = {
@@ -440,10 +442,14 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   createdAt: new Date().toISOString(),
                 };
                 
+                // Lưu vào localStorage tạm thời
                 const orders = JSON.parse(localStorage.getItem('orders') || '[]');
                 orders.push(order);
                 localStorage.setItem('orders', JSON.stringify(orders));
                 localStorage.setItem('pendingPayPalOrder', orderId);
+                
+                // Lưu lên server để đồng bộ (không await để không block PayPal flow)
+                addOrderToServer(order).catch(err => console.error('Error saving order to server:', err));
                 
                 return actions.order.create({
                   purchase_units: [{
@@ -472,6 +478,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 console.log('PayPal: Order approved, capturing...');
                 const details = await actions.order.capture();
                 
+                // Cập nhật trong localStorage
                 const updatedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
                 const orderIndex = updatedOrders.findIndex((o: any) => o.orderId === orderId);
                 if (orderIndex !== -1) {
@@ -480,6 +487,14 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   updatedOrders[orderIndex].paymentVerified = true;
                   updatedOrders[orderIndex].verifiedAt = new Date().toISOString();
                   localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                  
+                  // Cập nhật lên server
+                  await updateOrderOnServer(orderId, {
+                    paymentId: details.id,
+                    status: 'completed',
+                    paymentVerified: true,
+                    verifiedAt: new Date().toISOString(),
+                  });
                 }
                 localStorage.removeItem('pendingPayPalOrder');
                 
@@ -664,9 +679,13 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
       createdAt: new Date().toISOString(),
     };
 
+    // Lưu vào localStorage tạm thời
     const orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
+    
+    // Lưu lên server để đồng bộ
+    await addOrderToServer(order);
 
     // Show success message in modal instead of alert
     setSuccessOrder(order);
@@ -692,33 +711,34 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fadeIn"
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1f3a] rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative"
+        className="bg-[#1a1f3a] rounded-lg sm:rounded-xl p-3 sm:p-6 md:p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl relative scroll-smooth"
         onClick={(e) => e.stopPropagation()}
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Progress indicator - Only show if not success */}
         {!paymentSuccess && (
-          <div className="flex items-center justify-center mb-6 gap-2">
-            <div className={`h-1.5 rounded-full transition-all duration-300 ${step === 'customer-info' ? 'w-12 bg-gray-300' : 'w-8 bg-gray-600'}`}></div>
-            <div className={`h-1.5 rounded-full transition-all duration-300 ${step === 'payment-method' ? 'w-12 bg-gray-300' : 'w-8 bg-gray-600'}`}></div>
+          <div className="flex items-center justify-center mb-3 sm:mb-6 gap-1.5 sm:gap-2">
+            <div className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${step === 'customer-info' ? 'w-8 sm:w-12 bg-gray-300' : 'w-6 sm:w-8 bg-gray-600'}`}></div>
+            <div className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${step === 'payment-method' ? 'w-8 sm:w-12 bg-gray-300' : 'w-6 sm:w-8 bg-gray-600'}`}></div>
           </div>
         )}
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-3 sm:mb-6">
           <div>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-white">
+            <h2 className="text-lg sm:text-2xl md:text-3xl font-semibold text-white">
               {paymentSuccess ? 'Order Confirmed' : 'Complete Your Order'}
             </h2>
             {!paymentSuccess && (
-              <p className="text-gray-400 text-xs sm:text-sm mt-1">Step {step === 'customer-info' ? '1' : '2'} of 2</p>
+              <p className="text-gray-400 text-[10px] sm:text-sm mt-0.5 sm:mt-1">Step {step === 'customer-info' ? '1' : '2'} of 2</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl transition-colors w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700"
+            className="text-gray-400 hover:text-white text-xl sm:text-2xl transition-colors w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded hover:bg-gray-700"
           >
             ×
           </button>
@@ -726,21 +746,21 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
         {/* Plan Summary Card - Only show if not success */}
         {!paymentSuccess && (
-          <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div className="mb-3 sm:mb-6 p-2.5 sm:p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{carrierNames[pkg.carrier]}</div>
-                <h3 className="font-semibold text-lg mb-1 text-white">{pkg.name}</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-semibold text-white">
+                <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1 uppercase tracking-wide">{carrierNames[pkg.carrier]}</div>
+                <h3 className="font-semibold text-sm sm:text-lg mb-0.5 sm:mb-1 text-white">{pkg.name}</h3>
+                <div className="flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-base sm:text-xl font-semibold text-white">
                     ${pkg.price}
                   </span>
-                  <span className="text-gray-400 text-sm">/ {pkg.period}</span>
+                  <span className="text-gray-400 text-xs sm:text-sm">/ {pkg.period}</span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-400 mb-1">Total Amount</div>
-                <div className="text-xl font-semibold text-white">${pkg.price}</div>
+                <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Amount</div>
+                <div className="text-base sm:text-xl font-semibold text-white">${pkg.price}</div>
               </div>
             </div>
           </div>
@@ -790,14 +810,14 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </div>
               </div>
             ) : step === 'customer-info' ? (
-          <div className="space-y-5">
+          <div className="space-y-3 sm:space-y-5">
             {/* Important Notice */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-2">
-              <div className="flex items-start gap-3">
-                <i className="fas fa-info-circle text-blue-400 text-xl mt-0.5 flex-shrink-0"></i>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5 sm:p-4 mb-1.5 sm:mb-2">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <i className="fas fa-info-circle text-blue-400 text-base sm:text-xl mt-0.5 flex-shrink-0"></i>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-blue-400 mb-1">Important Notice</h4>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h4 className="font-semibold text-blue-400 mb-0.5 sm:mb-1 text-xs sm:text-sm">Important Notice</h4>
+                  <p className="text-gray-300 text-[11px] sm:text-sm leading-snug sm:leading-relaxed">
                     Please enter <strong className="text-white">accurate and correct information</strong>. This information will be used to activate your mobile plan. Incorrect information may result in delays or failure to receive your service package.
                   </p>
                 </div>
@@ -805,47 +825,49 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1.5 sm:mb-2 font-medium text-gray-300 text-xs sm:text-sm">
                 Full Name <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={customerInfo.name}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.name ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="John Doe"
+                autoComplete="name"
               />
               {errors.name && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-xs sm:text-sm mt-1 sm:mt-1.5">
                   {errors.name}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1.5 sm:mb-2 font-medium text-gray-300 text-xs sm:text-sm">
                 Email Address <span className="text-red-400">*</span>
               </label>
               <input
                 type="email"
                 value={customerInfo.email}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.email ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="john.doe@example.com"
+                autoComplete="email"
               />
               {errors.email && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-xs sm:text-sm mt-1 sm:mt-1.5">
                   {errors.email}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
+              <label className="block mb-1.5 sm:mb-2 font-medium text-gray-300 text-xs sm:text-sm">
                 Phone Number <span className="text-red-400">*</span>
               </label>
               <input
@@ -856,40 +878,41 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                   setCustomerInfo({ ...customerInfo, phone: formatted });
                 }}
                 maxLength={14}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors text-base min-h-[44px] ${
                   errors.phone ? 'border-red-500' : 'border-gray-600 focus:border-gray-400'
                 }`}
                 placeholder="(123) 456-7890"
+                autoComplete="tel"
               />
-              <p className="text-gray-500 text-xs mt-1.5">
+              <p className="text-gray-500 text-[10px] sm:text-xs mt-1 sm:mt-1.5">
                 Please enter a valid US phone number (10 digits). This phone number will be used to activate your mobile plan.
               </p>
               {errors.phone && (
-                <p className="text-red-400 text-sm mt-1.5">
+                <p className="text-red-400 text-xs sm:text-sm mt-1 sm:mt-1.5">
                   {errors.phone}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium text-gray-300">
-                Additional Notes <span className="text-gray-500 text-sm font-normal">(Optional)</span>
+              <label className="block mb-1.5 sm:mb-2 font-medium text-gray-300 text-xs sm:text-sm">
+                Additional Notes <span className="text-gray-500 text-[10px] sm:text-sm font-normal">(Optional)</span>
               </label>
               <textarea
                 value={customerInfo.notes}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
-                className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-400 transition-colors resize-none"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-400 transition-colors resize-none text-base min-h-[88px]"
                 placeholder="Any additional information or special requests..."
-                rows={3}
+                rows={2}
               />
             </div>
 
                 <button
                   onClick={handleContinue}
                   disabled={!isFormValid()}
-                  className={`w-full px-4 sm:px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 mt-4 sm:mt-6 text-base sm:text-lg min-h-[44px] ${
+                  className={`w-full px-3 sm:px-6 py-3 sm:py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 mt-4 sm:mt-6 mb-2 sm:mb-0 text-base sm:text-lg min-h-[48px] sm:min-h-[48px] ${
                     isFormValid()
-                      ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-blue-500/50 cursor-pointer'
+                      ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-blue-500/50 cursor-pointer active:scale-[0.98]'
                       : 'bg-gray-700/50 text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
@@ -898,34 +921,34 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                 </button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             <div>
-              <h3 className="text-xl font-semibold mb-1 text-white">
+              <h3 className="text-base sm:text-xl font-semibold mb-0.5 sm:mb-1 text-white">
                 Choose Payment Method
               </h3>
-              <p className="text-gray-400 text-sm">Select your preferred payment method</p>
+              <p className="text-gray-400 text-xs sm:text-sm">Select your preferred payment method</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
               <button
                 onClick={() => setPaymentMethod('paypal')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
+                className={`p-2.5 sm:p-4 rounded-lg border-2 transition-colors relative ${
                   paymentMethod === 'paypal'
                     ? 'border-gray-400 bg-gray-700'
                     : 'border-gray-600 bg-gray-800 hover:border-gray-500'
                 }`}
               >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                <div className="flex flex-col items-center gap-2 sm:gap-3">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
                     paymentMethod === 'paypal' ? 'bg-blue-600' : 'bg-gray-700'
                   }`}>
-                    <i className="fab fa-paypal text-2xl text-white"></i>
+                    <i className="fab fa-paypal text-xl sm:text-2xl text-white"></i>
                   </div>
-                  <span className="font-medium text-white">PayPal</span>
-                  <span className="text-xs text-gray-400">Secure & Fast</span>
+                  <span className="font-medium text-white text-sm sm:text-base">PayPal</span>
+                  <span className="text-[10px] sm:text-xs text-gray-400">Secure & Fast</span>
                   {paymentMethod === 'paypal' && (
-                    <div className="absolute top-2 right-2">
-                      <i className="fas fa-check-circle text-green-400"></i>
+                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+                      <i className="fas fa-check-circle text-green-400 text-sm sm:text-base"></i>
                     </div>
                   )}
                 </div>
@@ -933,23 +956,23 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
 
               <button
                 onClick={() => setPaymentMethod('crypto')}
-                className={`p-4 rounded-lg border-2 transition-colors relative ${
+                className={`p-2.5 sm:p-4 rounded-lg border-2 transition-colors relative ${
                   paymentMethod === 'crypto'
                     ? 'border-gray-400 bg-gray-700'
                     : 'border-gray-600 bg-gray-800 hover:border-gray-500'
                 }`}
               >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                <div className="flex flex-col items-center gap-2 sm:gap-3">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
                     paymentMethod === 'crypto' ? 'bg-orange-600' : 'bg-gray-700'
                   }`}>
-                    <i className="fab fa-bitcoin text-2xl text-white"></i>
+                    <i className="fab fa-bitcoin text-xl sm:text-2xl text-white"></i>
                   </div>
-                  <span className="font-medium text-white">Cryptocurrency</span>
-                  <span className="text-xs text-gray-400">BTC, ETH, USDT, BNB</span>
+                  <span className="font-medium text-white text-sm sm:text-base">Cryptocurrency</span>
+                  <span className="text-[10px] sm:text-xs text-gray-400">BTC, ETH, USDT, BNB</span>
                   {paymentMethod === 'crypto' && (
-                    <div className="absolute top-2 right-2">
-                      <i className="fas fa-check-circle text-green-400"></i>
+                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+                      <i className="fas fa-check-circle text-green-400 text-sm sm:text-base"></i>
                     </div>
                   )}
                 </div>
@@ -1104,7 +1127,9 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                       <>
                         {paypalLoaded && typeof window !== 'undefined' && (window as any).paypal ? (
                           <>
-                            <div ref={paypalButtonContainerRef} id="paypal-button-container" className="mt-4" style={{ minHeight: '50px' }}></div>
+                            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-br from-yellow-500/10 via-blue-500/10 to-purple-500/10 border-2 border-yellow-500/30 rounded-xl shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300">
+                              <div ref={paypalButtonContainerRef} id="paypal-button-container" className="paypal-button-wrapper" style={{ minHeight: '50px' }}></div>
+                            </div>
                             {!paypalButtonRendered && (
                               <div className="mt-2 text-center text-sm text-gray-400">
                                 <i className="fas fa-spinner fa-spin mr-2"></i>

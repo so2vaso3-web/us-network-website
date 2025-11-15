@@ -34,3 +34,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# data files (keep .gitkeep)
+/data/packages.json
+/data/orders.json
+
