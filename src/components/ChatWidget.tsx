@@ -114,8 +114,21 @@ export default function ChatWidget() {
             // Update localStorage
             localStorage.setItem('chatMessages', JSON.stringify(data.messages));
             
-            // Filter messages for this visitor
-            const visitorMessages = data.messages.filter((m: Message) => m.visitorId === visitorId);
+            // Filter messages for this visitor và đảm bảo isAdmin đúng
+            const visitorMessages = data.messages
+              .filter((m: Message) => m.visitorId === visitorId)
+              .map((m: Message) => {
+                // Đảm bảo logic isAdmin đúng:
+                // - Nếu message có name là 'Admin' hoặc 'Support Team' → isAdmin: true
+                // - Nếu message có name khác → isAdmin: false (khách hàng)
+                // - Nếu message đã có isAdmin: true và name là Admin/Support Team → giữ nguyên
+                // - Nếu message có visitorId và name không phải Admin/Support Team → isAdmin: false
+                const isAdminMessage = m.name === 'Admin' || m.name === 'Support Team';
+                return {
+                  ...m,
+                  isAdmin: isAdminMessage ? true : false, // Force correct isAdmin value
+                };
+              });
             
             // Always update messages từ server để đảm bảo sync
             setMessages(prevMessages => {
@@ -167,13 +180,13 @@ export default function ChatWidget() {
     }
 
     const newMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       visitorId: visitorId,
       name: name || 'Anonymous',
       email: email || '',
       message: message.trim(),
       timestamp: new Date().toISOString(),
-      isAdmin: false,
+      isAdmin: false, // KHÁCH HÀNG luôn là false
       read: false,
     };
 
