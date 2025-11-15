@@ -82,7 +82,7 @@ export default function SettingsManagement() {
             }
           }
           
-          // BƯỚC 4: Merge settings - SERVER (Vercel KV) là SOURCE OF TRUTH, localStorage là cache
+          // BƯỚC 4: Merge settings - ƯU TIÊN localStorage (user đang nhập), server là backup
           const defaultSettings: AdminSettings = {
             websiteName: 'US Mobile Networks',
             paypalEnabled: true,
@@ -98,8 +98,30 @@ export default function SettingsManagement() {
           
           let mergedSettings: AdminSettings;
           
-          if (hasServerData && serverSettings) {
-            // Có server settings (Vercel KV): DÙNG server làm base, merge localStorage nếu thiếu
+          // ƯU TIÊN localStorage trước (user đang nhập), sau đó merge server (backup)
+          if (localSettingsData) {
+            // Có localStorage: DÙNG localStorage làm base, merge server nếu thiếu
+            const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
+              ? localSettingsData.paypalMode 
+              : ((serverSettings?.paypalMode === 'live' || serverSettings?.paypalMode === 'sandbox') 
+                  ? serverSettings.paypalMode 
+                  : 'sandbox');
+            const validCryptoGateway = (localSettingsData.cryptoGateway === 'manual' || localSettingsData.cryptoGateway === 'bitpay') 
+              ? localSettingsData.cryptoGateway 
+              : ((serverSettings?.cryptoGateway === 'manual' || serverSettings?.cryptoGateway === 'bitpay') 
+                  ? serverSettings.cryptoGateway 
+                  : 'manual');
+            
+            // Merge: localStorage (ưu tiên) -> server (fill missing) -> default
+            mergedSettings = {
+              ...defaultSettings,
+              ...serverSettings, // Server settings fill missing fields
+              ...localSettingsData, // localStorage OVERRIDE (ưu tiên cao nhất - user đang nhập)
+              paypalMode: validPaypalMode,
+              cryptoGateway: validCryptoGateway,
+            };
+          } else if (hasServerData && serverSettings) {
+            // Không có localStorage, dùng server
             const validPaypalMode = (serverSettings.paypalMode === 'live' || serverSettings.paypalMode === 'sandbox') 
               ? serverSettings.paypalMode 
               : 'sandbox';
@@ -107,26 +129,9 @@ export default function SettingsManagement() {
               ? serverSettings.cryptoGateway 
               : 'manual';
             
-            // Merge: server (ưu tiên) -> localStorage (fill missing) -> default
             mergedSettings = {
               ...defaultSettings,
-              ...localSettingsData, // localStorage fill missing
-              ...serverSettings, // Server settings OVERRIDE (ưu tiên cao nhất - từ Vercel KV)
-              paypalMode: validPaypalMode,
-              cryptoGateway: validCryptoGateway,
-            };
-          } else if (localSettingsData) {
-            // Không có server, dùng localStorage
-            const validPaypalMode = (localSettingsData.paypalMode === 'live' || localSettingsData.paypalMode === 'sandbox') 
-              ? localSettingsData.paypalMode 
-              : 'sandbox';
-            const validCryptoGateway = (localSettingsData.cryptoGateway === 'manual' || localSettingsData.cryptoGateway === 'bitpay') 
-              ? localSettingsData.cryptoGateway 
-              : 'manual';
-            
-            mergedSettings = {
-              ...defaultSettings,
-              ...localSettingsData,
+              ...serverSettings,
               paypalMode: validPaypalMode,
               cryptoGateway: validCryptoGateway,
             };
@@ -157,7 +162,6 @@ export default function SettingsManagement() {
   // Auto-save function với debounce - ĐẢM BẢO GỬI FULL SETTINGS
   const autoSave = useCallback(async (settingsToSave: AdminSettings) => {
     if (isAutoSavingRef.current) return;
-    
     isAutoSavingRef.current = true;
     try {
       // Lưu vào localStorage ngay lập tức (backup) - ĐẢM BẢO FULL OBJECT
@@ -182,31 +186,43 @@ export default function SettingsManagement() {
     }
   }, []);
 
-  // Wrapper để update settings và auto-save - ĐẢM BẢO MERGE ĐÚNG
+  // Wrapper để update settings và auto-save - ĐẢM BẢO MERGE ĐÚNG VÀ KHÔNG MẤT FIELDS
   const updateSettings = (updates: Partial<AdminSettings>) => {
     setSettings(prev => {
-      // Merge với prev để đảm bảo không mất fields
+      if (!prev) return prev; // Safety check
+      
+      // Merge với prev để đảm bảo không mất fields - DEEP MERGE
       const newSettings: AdminSettings = { 
         ...prev, // Giữ lại TẤT CẢ fields cũ
         ...updates, // Update với fields mới
       };
       
-      // Đảm bảo các fields quan trọng không bị mất
-      if (prev) {
-        // Giữ lại các string fields nếu updates không có HOẶC là undefined
-        // Chỉ update nếu updates có giá trị rõ ràng (không phải undefined)
-        if (prev.paypalClientId && updates.paypalClientId === undefined) {
-          newSettings.paypalClientId = prev.paypalClientId;
-        }
-        if (prev.paypalClientSecret && updates.paypalClientSecret === undefined) {
-          newSettings.paypalClientSecret = prev.paypalClientSecret;
-        }
-        if (prev.telegramBotToken && updates.telegramBotToken === undefined) {
-          newSettings.telegramBotToken = prev.telegramBotToken;
-        }
-        if (prev.telegramChatId && updates.telegramChatId === undefined) {
-          newSettings.telegramChatId = prev.telegramChatId;
-        }
+      // Đảm bảo các fields quan trọng KHÔNG BỊ MẤT
+      // Chỉ update nếu updates có giá trị rõ ràng (không phải undefined, null, hoặc empty string khi đang có giá trị)
+      if (prev.paypalClientId && (updates.paypalClientId === undefined || updates.paypalClientId === null || updates.paypalClientId === '')) {
+        newSettings.paypalClientId = prev.paypalClientId;
+      }
+      if (prev.paypalClientSecret && (updates.paypalClientSecret === undefined || updates.paypalClientSecret === null || updates.paypalClientSecret === '')) {
+        newSettings.paypalClientSecret = prev.paypalClientSecret;
+      }
+      if (prev.telegramBotToken && (updates.telegramBotToken === undefined || updates.telegramBotToken === null || updates.telegramBotToken === '')) {
+        newSettings.telegramBotToken = prev.telegramBotToken;
+      }
+      if (prev.telegramChatId && (updates.telegramChatId === undefined || updates.telegramChatId === null || updates.telegramChatId === '')) {
+        newSettings.telegramChatId = prev.telegramChatId;
+      }
+      // Giữ lại các fields khác nếu updates không có
+      if (prev.contactEmail && updates.contactEmail === undefined) {
+        newSettings.contactEmail = prev.contactEmail;
+      }
+      if (prev.contactPhone && updates.contactPhone === undefined) {
+        newSettings.contactPhone = prev.contactPhone;
+      }
+      if (prev.address && updates.address === undefined) {
+        newSettings.address = prev.address;
+      }
+      if (prev.businessHours && updates.businessHours === undefined) {
+        newSettings.businessHours = prev.businessHours;
       }
       
       // Lưu vào localStorage ngay lập tức (backup) - FULL OBJECT
@@ -218,10 +234,10 @@ export default function SettingsManagement() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
       
-      // Auto-save lên server sau 2 giây không nhập (debounce) - giảm để save nhanh hơn
+      // Auto-save lên server sau 1.5 giây không nhập (debounce) - giảm để save nhanh hơn
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSave(newSettings);
-      }, 2000); // 2 giây
+      }, 1500); // 1.5 giây - nhanh hơn để không mất data
       
       setHasLocalChanges(true);
       return newSettings;
