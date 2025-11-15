@@ -85,6 +85,64 @@ export default function ChatWidget() {
     }
   }, [messages, isOpen, isMinimized]);
 
+  // Polling để nhận reply từ admin
+  useEffect(() => {
+    if (!visitorId || !isOpen) return;
+
+    const loadMessagesFromServer = async () => {
+      try {
+        const response = await fetch(`/api/chat?t=${Date.now()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+          cache: 'no-store',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.messages)) {
+            // Update localStorage
+            localStorage.setItem('chatMessages', JSON.stringify(data.messages));
+            
+            // Filter messages for this visitor
+            const visitorMessages = data.messages.filter((m: Message) => m.visitorId === visitorId);
+            
+            // Check if there are new messages (admin replies)
+            setMessages(prevMessages => {
+              const currentMessageIds = new Set(prevMessages.map(m => m.id));
+              const newMessages = visitorMessages.filter((m: Message) => !currentMessageIds.has(m.id));
+              
+              if (newMessages.length > 0) {
+                // Show notification if chat is minimized
+                if (isMinimized) {
+                  setToast({ 
+                    message: `You have ${newMessages.length} new message(s)`, 
+                    type: 'info' 
+                  });
+                }
+                return visitorMessages;
+              } else {
+                // Update messages even if no new ones (to sync)
+                return visitorMessages;
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading messages from server:', error);
+      }
+    };
+
+    // Load immediately
+    loadMessagesFromServer();
+
+    // Poll every 2 seconds when chat is open
+    const interval = setInterval(loadMessagesFromServer, 2000);
+    return () => clearInterval(interval);
+  }, [visitorId, isOpen, isMinimized]);
+
   const handleSendMessage = async () => {
     if (!message.trim()) return;
     

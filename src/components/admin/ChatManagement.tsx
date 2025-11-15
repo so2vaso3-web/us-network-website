@@ -255,20 +255,34 @@ export default function ChatManagement() {
       });
     }
     
-    // Save to server
-    try {
-      const response = await fetch('/api/chat', {
+    // Save to server và gửi Telegram notification SONG SONG
+    Promise.all([
+      // Save to server
+      fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: updatedWithRead }),
-      });
+      }).catch(error => {
+        console.error('Error saving reply to server:', error);
+      }),
       
-      if (!response.ok) {
-        console.error('Failed to save reply to server');
-      }
-    } catch (error) {
-      console.error('Error saving reply to server:', error);
-    }
+      // Gửi notification qua Telegram để admin biết đã reply
+      fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: conversation.name,
+          email: conversation.email,
+          message: `📤 Admin Reply:\n${replyText.trim()}`,
+          visitorId: conversation.visitorId,
+          isReply: true,
+        }),
+      }).catch(error => {
+        console.error('Error sending Telegram notification:', error);
+      }),
+    ]).catch(error => {
+      console.error('Error in parallel requests:', error);
+    });
     
     setReplyText('');
     // Reload messages ngay lập tức để sync với server

@@ -75,11 +75,11 @@ async function sendToTelegram(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, message: messageText, visitorId } = body;
+    const { name, email, message: messageText, visitorId, isReply } = body;
 
-    if (!name || !messageText) {
+    if (!messageText) {
       return NextResponse.json(
-        { success: false, error: 'Name and message are required' },
+        { success: false, error: 'Message is required' },
         { status: 400 }
       );
     }
@@ -97,11 +97,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Format message for Telegram
-    const telegramMessage = `
+    // Format message for Telegram - khác nhau cho reply và message mới
+    let telegramMessage: string;
+    
+    if (isReply) {
+      // Admin reply notification
+      telegramMessage = `
+✅ <b>Admin Reply Sent</b>
+
+👤 <b>To:</b> ${name || 'Unknown'}
+📧 <b>Email:</b> ${email || 'Not provided'}
+🆔 <b>Visitor ID:</b> ${visitorId || 'Unknown'}
+
+💬 <b>Reply:</b>
+${messageText}
+
+⏰ <b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}
+      `.trim();
+    } else {
+      // New customer message
+      telegramMessage = `
 🔔 <b>New Chat Message</b>
 
-👤 <b>Name:</b> ${name}
+👤 <b>Name:</b> ${name || 'Anonymous'}
 📧 <b>Email:</b> ${email || 'Not provided'}
 🆔 <b>Visitor ID:</b> ${visitorId || 'Unknown'}
 
@@ -109,7 +127,8 @@ export async function POST(request: NextRequest) {
 ${messageText}
 
 ⏰ <b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}
-    `.trim();
+      `.trim();
+    }
 
     // Send to Telegram
     const success = await sendToTelegram(
