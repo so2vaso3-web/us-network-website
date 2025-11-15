@@ -180,9 +180,20 @@ export default function SettingsManagement() {
       
       if (success) {
         setHasLocalChanges(false);
-        // Không hiển thị toast để không làm phiền user
+        // Clear any previous error toast
+        setToast(null);
       } else {
         console.error('Auto-save failed, but localStorage is saved');
+        // Only show warning if it's not a development/local issue
+        if (process.env.NODE_ENV === 'production') {
+          setToast({ 
+            message: 'Đã lưu vào cache local, nhưng không thể lưu lên server. Vui lòng thử lại hoặc kiểm tra kết nối.', 
+            type: 'warning' 
+          });
+        } else {
+          // In development, just log - might be missing KV config
+          console.warn('Settings saved to localStorage only. Configure Vercel KV for persistent storage.');
+        }
       }
     } catch (error) {
       console.error('Auto-save error:', error);

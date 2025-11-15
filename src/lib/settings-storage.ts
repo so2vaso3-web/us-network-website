@@ -27,6 +27,16 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
         console.error('Error loading from Vercel KV:', e);
         // Fall through to safe fallback
       }
+    } else {
+      // Fallback for local development: use in-memory storage
+      if (process.env.NODE_ENV === 'development' && typeof global !== 'undefined') {
+        // @ts-ignore
+        const devStorage = global.__devSettingsStorage;
+        if (devStorage && devStorage[STORAGE_KEY]) {
+          const devSettings = devStorage[STORAGE_KEY];
+          return decrypt ? decryptSettings(devSettings) : devSettings;
+        }
+      }
     }
   } catch (error) {
     console.error('Error reading settings:', error);
@@ -45,6 +55,7 @@ export async function readSettingsFromKV(decrypt: boolean = true): Promise<any> 
 /**
  * Save settings to Vercel KV only (no filesystem)
  * Encrypts sensitive fields before saving
+ * Falls back to in-memory storage in development if KV not configured
  */
 export async function saveSettingsToKV(settings: any, encrypt: (settings: any) => any): Promise<void> {
   // Encrypt sensitive fields before saving
@@ -63,6 +74,22 @@ export async function saveSettingsToKV(settings: any, encrypt: (settings: any) =
         throw e; // Throw để caller biết có lỗi
       }
     } else {
+      // Fallback for local development: use in-memory storage
+      if (process.env.NODE_ENV === 'development') {
+        // Store in global memory (will be lost on restart, but works for dev)
+        if (typeof global !== 'undefined') {
+          // @ts-ignore
+          if (!global.__devSettingsStorage) {
+            // @ts-ignore
+            global.__devSettingsStorage = {};
+          }
+          // @ts-ignore
+          global.__devSettingsStorage[STORAGE_KEY] = encryptedSettings;
+          console.warn('⚠️ Vercel KV not configured. Using in-memory storage (data will be lost on restart).');
+          console.warn('   To enable persistent storage, set KV_REST_API_URL and KV_REST_API_TOKEN in Vercel.');
+          return;
+        }
+      }
       throw new Error('Vercel KV not configured. Please set KV_REST_API_URL and KV_REST_API_TOKEN');
     }
   } catch (error) {

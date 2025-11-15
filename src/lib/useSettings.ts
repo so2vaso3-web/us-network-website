@@ -160,10 +160,17 @@ export async function saveSettingsToServer(settings: AdminSettings, localStorage
         notifySettingsUpdated();
         return true;
       } else {
-        console.error('Save failed:', data.error || 'Unknown error');
+        const errorMsg = data.error || 'Unknown error';
+        console.error('Save failed:', errorMsg);
+        // Check if it's a KV configuration error
+        if (errorMsg.includes('Vercel KV not configured')) {
+          console.warn('⚠️ Vercel KV not configured. Settings saved to localStorage only.');
+          console.warn('   For production, configure KV_REST_API_URL and KV_REST_API_TOKEN in Vercel.');
+        }
       }
     } else {
-      console.error('Save failed with status:', response.status);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Save failed with status:', response.status, errorText);
     }
     return false;
   } catch (error) {
