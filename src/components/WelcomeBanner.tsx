@@ -15,14 +15,34 @@ export default function WelcomeBanner() {
         return;
       }
       
-      // CHỈ check "never show" - banner luôn hiện khi tải lại trang (trừ khi đóng vĩnh viễn)
+      // Check "never show" - banner không hiện nếu đã tắt vĩnh viễn
       const neverShow = localStorage.getItem('welcomeBannerNeverShow');
       if (neverShow === 'true') {
         console.log('Banner dismissed permanently - not showing');
         return;
       }
       
-      // Show banner after 1 second - LUÔN hiện khi tải lại trang
+      // Check "dismiss 1 hour" - SỬA: Kiểm tra timestamp để ẩn trong 1 giờ
+      const dismissTime = localStorage.getItem('welcomeBannerDismissTime');
+      if (dismissTime) {
+        const dismissTimestamp = parseInt(dismissTime, 10);
+        const currentTime = Date.now();
+        const oneHourInMs = 60 * 60 * 1000; // 1 giờ = 3600000 ms
+        
+        if (currentTime - dismissTimestamp < oneHourInMs) {
+          // Chưa đủ 1 giờ, không hiện banner
+          const remainingTime = oneHourInMs - (currentTime - dismissTimestamp);
+          const remainingMinutes = Math.ceil(remainingTime / 60000);
+          console.log(`Banner dismissed - will show again in ${remainingMinutes} minutes`);
+          return;
+        } else {
+          // Đã quá 1 giờ, xóa timestamp và cho hiện banner
+          localStorage.removeItem('welcomeBannerDismissTime');
+          console.log('1 hour passed - showing banner again');
+        }
+      }
+      
+      // Show banner after 1 second
       console.log('Setting timer to show banner in 1 second...');
       const timer = setTimeout(() => {
         const currentPathCheck = window.location.pathname;
@@ -40,6 +60,19 @@ export default function WelcomeBanner() {
           return;
         }
         
+        // Double check dismiss 1 hour
+        const dismissTimeCheck = localStorage.getItem('welcomeBannerDismissTime');
+        if (dismissTimeCheck) {
+          const dismissTimestamp = parseInt(dismissTimeCheck, 10);
+          const currentTime = Date.now();
+          const oneHourInMs = 60 * 60 * 1000;
+          
+          if (currentTime - dismissTimestamp < oneHourInMs) {
+            console.log('Dismiss 1 hour check - banner hidden');
+            return;
+          }
+        }
+        
         console.log('✅ Showing welcome banner NOW!');
         setIsVisible(true);
       }, 1000);
@@ -49,10 +82,13 @@ export default function WelcomeBanner() {
   }, []);
 
   const handleDismiss1Hour = () => {
-    // Chỉ ẩn banner trong session hiện tại, không lưu vào localStorage
-    // Banner sẽ hiện lại khi tải lại trang
+    // SỬA: Lưu timestamp vào localStorage để ẩn trong 1 giờ
     setIsVisible(false);
-    console.log('Banner dismissed for this session - will show again on page reload');
+    if (typeof window !== 'undefined') {
+      const currentTime = Date.now();
+      localStorage.setItem('welcomeBannerDismissTime', currentTime.toString());
+      console.log('Banner dismissed for 1 hour - will show again after 1 hour');
+    }
   };
 
   const handleNeverShow = () => {
