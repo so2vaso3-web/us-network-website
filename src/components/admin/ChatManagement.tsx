@@ -39,8 +39,8 @@ export default function ChatManagement() {
 
   useEffect(() => {
     loadMessages();
-    // Polling để cập nhật NHANH - SỬA: Giảm xuống 1 giây để nhận tin nhắn mới từ khách nhanh hơn
-    const interval = setInterval(loadMessages, 1000);
+    // Polling để cập nhật NHANH - SỬA: Giảm xuống 0.5 giây để nhận tin nhắn mới từ khách nhanh nhất
+    const interval = setInterval(loadMessages, 500);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // loadMessages được định nghĩa trong component, không cần dependency
@@ -483,10 +483,10 @@ export default function ChatManagement() {
         console.error('Failed to save reply to server:', saveResponse.status, saveResponse.statusText);
       } else {
         console.log('Reply saved to server successfully');
-        // Reload messages ngay sau khi save thành công để sync
+        // Reload messages ngay sau khi save thành công để sync (SỬA: Giảm xuống 100ms)
         setTimeout(() => {
           loadMessages();
-        }, 300); // Giảm thời gian chờ xuống 300ms
+        }, 100); // Giảm thời gian chờ xuống 100ms để nhanh nhất
       }
     } catch (error) {
       console.error('Error saving reply to server:', error);
