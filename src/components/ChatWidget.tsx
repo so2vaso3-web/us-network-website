@@ -238,8 +238,8 @@ export default function ChatWidget() {
     if (visitorId) {
       loadMessages();
       
-      // Polling để nhận tin nhắn mới từ admin (SỬA: Giảm xuống 0.5 giây để nhanh nhất)
-      const interval = setInterval(loadMessages, 500);
+      // Polling để nhận tin nhắn mới từ admin (SỬA: Giảm xuống 300ms để nhanh nhất có thể)
+      const interval = setInterval(loadMessages, 300);
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,7 +335,7 @@ export default function ChatWidget() {
       setShowNameEmail(false);
     }
 
-    // Save to server và reload ngay sau khi save thành công (SỬA: Check ngay lập tức)
+    // Save to server và reload NGAY LẬP TỨC (SỬA: Check ngay không chờ)
     fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -344,10 +344,12 @@ export default function ChatWidget() {
       body: JSON.stringify({ messages: allMessages }),
     })
     .then(() => {
-      // Reload messages ngay sau khi save thành công để nhận tin nhắn mới từ admin (SỬA: Giảm xuống 100ms)
+      // Reload messages NGAY LẬP TỨC sau khi save thành công (SỬA: 0ms delay)
+      loadMessages(); // Check ngay lập tức
+      // Check lại sau 50ms để đảm bảo nhận tin nhắn mới nhất
       setTimeout(() => {
         loadMessages();
-      }, 100); // Giảm thời gian chờ xuống 100ms để nhanh nhất
+      }, 50);
     })
     .catch(err => console.error('Failed to save message to server:', err));
 
