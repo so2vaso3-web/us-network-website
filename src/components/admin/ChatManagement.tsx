@@ -35,6 +35,7 @@ export default function ChatManagement() {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: () => {}, type: 'danger' as 'info' | 'warning' | 'danger', confirmText: 'Confirm', cancelText: 'Cancel' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false); // Track xem có request đang pending không để tránh race condition
+  const selectedVisitorIdRef = useRef<string | null>(null); // Lưu visitorId đã chọn để tránh bị reset khi loadMessages()
 
   useEffect(() => {
     loadMessages();
@@ -241,9 +242,9 @@ export default function ChatManagement() {
             return convs; // Có thay đổi, update
           });
           
-          // Update selected conversation nếu đang mở
-          if (selectedConversation) {
-            const updatedConv = convs.find(c => c.visitorId === selectedConversation.visitorId);
+          // Update selected conversation nếu đang mở - SỬA: Dùng ref để tránh bị reset
+          if (selectedVisitorIdRef.current) {
+            const updatedConv = convs.find(c => c.visitorId === selectedVisitorIdRef.current);
             if (updatedConv) {
               // CHỈ update nếu có thay đổi - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
               setSelectedConversation(prev => {
@@ -271,6 +272,7 @@ export default function ChatManagement() {
                 return updatedConv; // Có thay đổi, update
               });
             }
+            // Nếu không tìm thấy conversation, giữ nguyên selection (không reset)
           }
         } catch (e) {
           console.error('Error processing messages:', e);
@@ -412,6 +414,7 @@ export default function ChatManagement() {
         }
         
         if (selectedConversation?.visitorId === visitorId) {
+          selectedVisitorIdRef.current = null; // Clear ref khi xóa conversation
           setSelectedConversation(null);
         }
         loadMessages();
@@ -637,6 +640,7 @@ export default function ChatManagement() {
                 <div
                   key={conv.visitorId}
                   onClick={() => {
+                    selectedVisitorIdRef.current = conv.visitorId; // Lưu visitorId vào ref để tránh bị reset
                     setSelectedConversation(conv);
                     markConversationAsRead(conv.visitorId);
                   }}
