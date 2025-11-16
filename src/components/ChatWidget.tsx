@@ -27,6 +27,7 @@ export default function ChatWidget() {
   const [alertMessage, setAlertMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false); // Track xem có request đang pending không để tránh race condition
+  const reloadTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track timeout để clear khi cần
 
   // Load messages from server and sync
   const loadMessages = async () => {
@@ -51,19 +52,62 @@ export default function ChatWidget() {
       });
 
       let allMessages: Message[] = [];
+      let serverMessages: Message[] = [];
       
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.messages)) {
-          allMessages = data.messages;
-          // Update localStorage để sync
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('chatMessages', JSON.stringify(allMessages));
-          }
+          serverMessages = data.messages;
         }
       }
       
-      // Fallback: Load from localStorage nếu server không có
+      // MERGE với localStorage để không mất tin nhắn mới vừa gửi (SỬA: Tránh mất tin nhắn khi spam)
+      if (typeof window !== 'undefined') {
+        const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        if (Array.isArray(localMessages) && localMessages.length > 0) {
+          // Merge: Ưu tiên server, nhưng giữ lại local nếu local mới hơn (để giữ tin nhắn vừa gửi)
+          const messageMap = new Map<string, Message>();
+          
+          // Thêm messages từ server trước (ưu tiên)
+          serverMessages.forEach((m: Message) => {
+            messageMap.set(m.id, m);
+          });
+          
+          // Thêm messages từ local nếu chưa có trong server HOẶC local mới hơn (để giữ tin nhắn vừa gửi)
+          localMessages.forEach((m: Message) => {
+            const existing = messageMap.get(m.id);
+            if (!existing) {
+              // Chưa có trong server, thêm vào (tin nhắn mới vừa gửi)
+              messageMap.set(m.id, m);
+            } else {
+              // Có trong cả 2, so sánh timestamp để giữ bản mới hơn
+              const localTime = new Date(m.timestamp).getTime();
+              const serverTime = new Date(existing.timestamp).getTime();
+              if (localTime > serverTime) {
+                // Local mới hơn (tin nhắn vừa gửi), giữ lại
+                messageMap.set(m.id, m);
+              }
+            }
+          });
+          
+          // Convert map to array
+          allMessages = Array.from(messageMap.values());
+          
+          // Update localStorage với merged data
+          localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+        } else {
+          // Không có trong localStorage, dùng server
+          allMessages = serverMessages;
+          if (allMessages.length > 0) {
+            localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+          }
+        }
+      } else {
+        // Không có localStorage, dùng server
+        allMessages = serverMessages;
+      }
+      
+      // Fallback: Load from localStorage nếu server không có và localStorage cũng rỗng
       if (allMessages.length === 0 && typeof window !== 'undefined') {
         const saved = localStorage.getItem('chatMessages');
         if (saved) {
@@ -281,8 +325,10 @@ export default function ChatWidget() {
     allMessages.push(newMessage);
     localStorage.setItem('chatMessages', JSON.stringify(allMessages));
 
-    // Update local state immediately (optimistic update)
+    // Update local state immediately (optimistic update) - SỬA: Sort messages trước khi update
     const visitorMessages = allMessages.filter((m: Message) => m.visitorId === visitorId);
+    visitorMessages.sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Force update ngay lập tức, không cần so sánh vì đây là tin nhắn mới vừa gửi
     setMessages(visitorMessages);
     
     setMessage('');
@@ -314,9 +360,13 @@ export default function ChatWidget() {
       }),
     }).catch(err => console.error('Failed to send Telegram notification:', err));
     
-    // Reload messages sau khi save để sync
-    setTimeout(() => {
+    // Reload messages sau khi save để sync - SỬA: Clear timeout cũ để tránh conflict khi spam
+    if (reloadTimeoutRef.current) {
+      clearTimeout(reloadTimeoutRef.current);
+    }
+    reloadTimeoutRef.current = setTimeout(() => {
       loadMessages();
+      reloadTimeoutRef.current = null;
     }, 500);
 
     // Auto-reply (optional) - removed, admin will reply manually
