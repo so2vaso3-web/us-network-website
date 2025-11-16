@@ -38,8 +38,8 @@ export default function ChatManagement() {
 
   useEffect(() => {
     loadMessages();
-    // Polling mỗi 1.5 giây để cập nhật NHANH - nhưng không quá nhiều requests
-    const interval = setInterval(loadMessages, 1500);
+    // Polling để cập nhật NHANH - SỬA: Giảm xuống 1 giây để nhận tin nhắn mới từ khách nhanh hơn
+    const interval = setInterval(loadMessages, 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // loadMessages được định nghĩa trong component, không cần dependency
@@ -468,7 +468,7 @@ export default function ChatManagement() {
       });
     }
     
-    // Save to server TRƯỚC, sau đó mới gửi Telegram
+    // Save to server TRƯỚC, sau đó reload ngay để sync (SỬA: Check ngay lập tức)
     try {
       const saveResponse = await fetch('/api/chat', {
         method: 'POST',
@@ -480,6 +480,10 @@ export default function ChatManagement() {
         console.error('Failed to save reply to server:', saveResponse.status, saveResponse.statusText);
       } else {
         console.log('Reply saved to server successfully');
+        // Reload messages ngay sau khi save thành công để sync
+        setTimeout(() => {
+          loadMessages();
+        }, 300); // Giảm thời gian chờ xuống 300ms
       }
     } catch (error) {
       console.error('Error saving reply to server:', error);

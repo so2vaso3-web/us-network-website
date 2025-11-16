@@ -27,7 +27,6 @@ export default function ChatWidget() {
   const [alertMessage, setAlertMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false); // Track xem có request đang pending không để tránh race condition
-  const reloadTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track timeout để clear khi cần
 
   // Load messages from server and sync
   const loadMessages = async () => {
@@ -239,8 +238,8 @@ export default function ChatWidget() {
     if (visitorId) {
       loadMessages();
       
-      // Polling để nhận tin nhắn mới từ admin (mỗi 2 giây)
-      const interval = setInterval(loadMessages, 2000);
+      // Polling để nhận tin nhắn mới từ admin (SỬA: Giảm xuống 1 giây để nhanh hơn)
+      const interval = setInterval(loadMessages, 1000);
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,14 +335,21 @@ export default function ChatWidget() {
       setShowNameEmail(false);
     }
 
-    // Save to server (non-blocking)
+    // Save to server và reload ngay sau khi save thành công (SỬA: Check ngay lập tức)
     fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ messages: allMessages }),
-    }).catch(err => console.error('Failed to save message to server:', err));
+    })
+    .then(() => {
+      // Reload messages ngay sau khi save thành công để nhận tin nhắn mới từ admin
+      setTimeout(() => {
+        loadMessages();
+      }, 300); // Giảm thời gian chờ xuống 300ms
+    })
+    .catch(err => console.error('Failed to save message to server:', err));
 
     // Send Telegram notification for new chat message (non-blocking)
     fetch('/api/telegram', {
@@ -359,15 +365,6 @@ export default function ChatWidget() {
         isReply: false,
       }),
     }).catch(err => console.error('Failed to send Telegram notification:', err));
-    
-    // Reload messages sau khi save để sync - SỬA: Clear timeout cũ để tránh conflict khi spam
-    if (reloadTimeoutRef.current) {
-      clearTimeout(reloadTimeoutRef.current);
-    }
-    reloadTimeoutRef.current = setTimeout(() => {
-      loadMessages();
-      reloadTimeoutRef.current = null;
-    }, 500);
 
     // Auto-reply (optional) - removed, admin will reply manually
   };
