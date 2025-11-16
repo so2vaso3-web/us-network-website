@@ -111,16 +111,33 @@ export default function ChatWidget() {
       // Sort by timestamp
       visitorMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
-      // Update state only if changed
+      // Update state only if changed - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
       setMessages(prev => {
+        // So sánh sâu để tránh update không cần thiết
         if (prev.length !== visitorMessages.length) {
           return visitorMessages;
         }
+        
+        // So sánh từng message đầy đủ (id, message, read, timestamp, etc.)
         const hasChanges = prev.some((p, idx) => {
           const curr = visitorMessages[idx];
-          return !curr || p.id !== curr.id || p.message !== curr.message;
+          if (!curr) return true;
+          // So sánh tất cả các trường quan trọng
+          return p.id !== curr.id || 
+                 p.message !== curr.message || 
+                 p.read !== curr.read ||
+                 p.timestamp !== curr.timestamp ||
+                 p.isAdmin !== curr.isAdmin ||
+                 p.name !== curr.name ||
+                 p.email !== curr.email;
         });
-        return hasChanges ? visitorMessages : prev;
+        
+        // Chỉ update khi có thay đổi thực sự
+        if (!hasChanges) {
+          return prev; // Giữ nguyên state cũ để tránh flicker
+        }
+        
+        return visitorMessages;
       });
       
       // Check if welcome message exists

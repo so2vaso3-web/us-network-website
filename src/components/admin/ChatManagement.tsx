@@ -116,18 +116,36 @@ export default function ChatManagement() {
       
       if (messages.length > 0) {
         try {
-          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết
+          // Sort messages by timestamp để đảm bảo thứ tự đúng trước khi so sánh
+          messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          
+          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
           setAllMessages(prev => {
-            // So sánh để tránh update không cần thiết
-            if (prev.length === messages.length) {
-              const hasChanges = prev.some((p, idx) => {
-                const curr = messages[idx];
-                return !curr || p.id !== curr.id || p.message !== curr.message || p.timestamp !== curr.timestamp;
-              });
-              if (!hasChanges) {
-                return prev; // Không có thay đổi, giữ nguyên
-              }
+            // So sánh sâu để tránh update không cần thiết
+            if (prev.length !== messages.length) {
+              return messages;
             }
+            
+            // So sánh từng message đầy đủ (id, message, read, timestamp, etc.)
+            const hasChanges = prev.some((p, idx) => {
+              const curr = messages[idx];
+              if (!curr) return true;
+              // So sánh tất cả các trường quan trọng để tránh flicker
+              return p.id !== curr.id || 
+                     p.message !== curr.message || 
+                     p.timestamp !== curr.timestamp ||
+                     p.read !== curr.read ||
+                     p.isAdmin !== curr.isAdmin ||
+                     p.name !== curr.name ||
+                     p.email !== curr.email ||
+                     p.visitorId !== curr.visitorId;
+            });
+            
+            // Chỉ update khi có thay đổi thực sự
+            if (!hasChanges) {
+              return prev; // Giữ nguyên state cũ để tránh flicker
+            }
+            
             return messages; // Có thay đổi, update
           });
 
@@ -168,17 +186,31 @@ export default function ChatManagement() {
             new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
           );
           
-          // CHỈ update nếu có thay đổi
+          // CHỈ update nếu có thay đổi - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
           setConversations(prev => {
-            if (prev.length === convs.length) {
-              const hasChanges = prev.some((p, idx) => {
-                const curr = convs[idx];
-                return !curr || p.visitorId !== curr.visitorId || p.lastMessage !== curr.lastMessage || p.unreadCount !== curr.unreadCount;
-              });
-              if (!hasChanges) {
-                return prev; // Không có thay đổi, giữ nguyên
-              }
+            if (prev.length !== convs.length) {
+              return convs;
             }
+            
+            // So sánh sâu để tránh update không cần thiết
+            const hasChanges = prev.some((p, idx) => {
+              const curr = convs[idx];
+              if (!curr) return true;
+              // So sánh tất cả các trường quan trọng
+              return p.visitorId !== curr.visitorId || 
+                     p.lastMessage !== curr.lastMessage || 
+                     p.lastMessageTime !== curr.lastMessageTime ||
+                     p.unreadCount !== curr.unreadCount ||
+                     p.name !== curr.name ||
+                     p.email !== curr.email ||
+                     p.messages.length !== curr.messages.length;
+            });
+            
+            // Chỉ update khi có thay đổi thực sự
+            if (!hasChanges) {
+              return prev; // Giữ nguyên state cũ để tránh flicker
+            }
+            
             return convs; // Có thay đổi, update
           });
           
@@ -186,17 +218,29 @@ export default function ChatManagement() {
           if (selectedConversation) {
             const updatedConv = convs.find(c => c.visitorId === selectedConversation.visitorId);
             if (updatedConv) {
-              // CHỈ update nếu có thay đổi
+              // CHỈ update nếu có thay đổi - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
               setSelectedConversation(prev => {
-                if (prev && prev.messages.length === updatedConv.messages.length) {
-                  const hasChanges = prev.messages.some((p, idx) => {
-                    const curr = updatedConv.messages[idx];
-                    return !curr || p.id !== curr.id || p.message !== curr.message;
-                  });
-                  if (!hasChanges) {
-                    return prev; // Không có thay đổi, giữ nguyên
-                  }
+                if (!prev || prev.messages.length !== updatedConv.messages.length) {
+                  return updatedConv;
                 }
+                
+                // So sánh sâu tất cả các messages
+                const hasChanges = prev.messages.some((p, idx) => {
+                  const curr = updatedConv.messages[idx];
+                  if (!curr) return true;
+                  // So sánh tất cả các trường quan trọng
+                  return p.id !== curr.id || 
+                         p.message !== curr.message || 
+                         p.timestamp !== curr.timestamp ||
+                         p.read !== curr.read ||
+                         p.isAdmin !== curr.isAdmin;
+                });
+                
+                // Chỉ update khi có thay đổi thực sự
+                if (!hasChanges) {
+                  return prev; // Giữ nguyên state cũ để tránh flicker
+                }
+                
                 return updatedConv; // Có thay đổi, update
               });
             }
