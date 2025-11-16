@@ -26,10 +26,18 @@ export default function ChatWidget() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false); // Track xem có request đang pending không để tránh race condition
 
   // Load messages from server and sync
   const loadMessages = async () => {
     if (!visitorId) return;
+    
+    // Tránh race condition: Nếu có request đang pending, skip
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    isLoadingRef.current = true;
     
     try {
       // Load from server first
@@ -111,25 +119,28 @@ export default function ChatWidget() {
       // Sort by timestamp
       visitorMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
-      // Update state only if changed - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
+      // Update state only if changed - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER (CẢI THIỆN)
       setMessages(prev => {
-        // So sánh sâu để tránh update không cần thiết
+        // So sánh sâu để tránh update không cần thiết - SỬA: So sánh theo ID map thay vì index
         if (prev.length !== visitorMessages.length) {
           return visitorMessages;
         }
         
-        // So sánh từng message đầy đủ (id, message, read, timestamp, etc.)
-        const hasChanges = prev.some((p, idx) => {
-          const curr = visitorMessages[idx];
-          if (!curr) return true;
+        // Tạo map từ prev để so sánh nhanh hơn và chính xác hơn
+        const prevMap = new Map(prev.map(m => [m.id, m]));
+        
+        // So sánh từng message theo ID - chính xác hơn so với so sánh theo index
+        const hasChanges = visitorMessages.some(curr => {
+          const prevMsg = prevMap.get(curr.id);
+          if (!prevMsg) return true; // Message mới
+          
           // So sánh tất cả các trường quan trọng
-          return p.id !== curr.id || 
-                 p.message !== curr.message || 
-                 p.read !== curr.read ||
-                 p.timestamp !== curr.timestamp ||
-                 p.isAdmin !== curr.isAdmin ||
-                 p.name !== curr.name ||
-                 p.email !== curr.email;
+          return prevMsg.message !== curr.message || 
+                 prevMsg.read !== curr.read ||
+                 prevMsg.timestamp !== curr.timestamp ||
+                 prevMsg.isAdmin !== curr.isAdmin ||
+                 prevMsg.name !== curr.name ||
+                 prevMsg.email !== curr.email;
         });
         
         // Chỉ update khi có thay đổi thực sự
@@ -161,6 +172,9 @@ export default function ChatWidget() {
           }
         }
       }
+    } finally {
+      // Reset loading flag sau khi hoàn thành (dù thành công hay thất bại)
+      isLoadingRef.current = false;
     }
   };
 

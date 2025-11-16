@@ -34,6 +34,7 @@ export default function ChatManagement() {
   const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: 'warning' as 'info' | 'success' | 'warning' | 'error' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: () => {}, type: 'danger' as 'info' | 'warning' | 'danger', confirmText: 'Confirm', cancelText: 'Cancel' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false); // Track xem có request đang pending không để tránh race condition
 
   useEffect(() => {
     loadMessages();
@@ -50,6 +51,13 @@ export default function ChatManagement() {
   }, [selectedConversation]);
 
   const loadMessages = async () => {
+    // Tránh race condition: Nếu có request đang pending, skip
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    
     try {
       // Load từ server trước (Vercel KV)
       const response = await fetch(`/api/chat?t=${Date.now()}`, {
@@ -119,26 +127,29 @@ export default function ChatManagement() {
           // Sort messages by timestamp để đảm bảo thứ tự đúng trước khi so sánh
           messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
           
-          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER
+          // CHỈ update nếu có thay đổi thực sự để tránh re-render không cần thiết - SỬA LOGIC SO SÁNH ĐỂ TRÁNH FLICKER (CẢI THIỆN)
           setAllMessages(prev => {
-            // So sánh sâu để tránh update không cần thiết
+            // So sánh sâu để tránh update không cần thiết - SỬA: So sánh theo ID map thay vì index
             if (prev.length !== messages.length) {
               return messages;
             }
             
-            // So sánh từng message đầy đủ (id, message, read, timestamp, etc.)
-            const hasChanges = prev.some((p, idx) => {
-              const curr = messages[idx];
-              if (!curr) return true;
+            // Tạo map từ prev để so sánh nhanh hơn và chính xác hơn
+            const prevMap = new Map(prev.map(m => [m.id, m]));
+            
+            // So sánh từng message theo ID - chính xác hơn so với so sánh theo index
+            const hasChanges = messages.some(curr => {
+              const prevMsg = prevMap.get(curr.id);
+              if (!prevMsg) return true; // Message mới
+              
               // So sánh tất cả các trường quan trọng để tránh flicker
-              return p.id !== curr.id || 
-                     p.message !== curr.message || 
-                     p.timestamp !== curr.timestamp ||
-                     p.read !== curr.read ||
-                     p.isAdmin !== curr.isAdmin ||
-                     p.name !== curr.name ||
-                     p.email !== curr.email ||
-                     p.visitorId !== curr.visitorId;
+              return prevMsg.message !== curr.message || 
+                     prevMsg.timestamp !== curr.timestamp ||
+                     prevMsg.read !== curr.read ||
+                     prevMsg.isAdmin !== curr.isAdmin ||
+                     prevMsg.name !== curr.name ||
+                     prevMsg.email !== curr.email ||
+                     prevMsg.visitorId !== curr.visitorId;
             });
             
             // Chỉ update khi có thay đổi thực sự
@@ -308,6 +319,9 @@ export default function ChatManagement() {
           }
         }
       }
+    } finally {
+      // Reset loading flag sau khi hoàn thành (dù thành công hay thất bại)
+      isLoadingRef.current = false;
     }
   };
 
