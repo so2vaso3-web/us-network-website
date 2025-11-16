@@ -70,34 +70,41 @@ export default function ChatManagement() {
       });
 
       let messages: Message[] = [];
+      let serverMessages: Message[] = [];
       
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.messages)) {
-          messages = data.messages;
-          // Update localStorage để sync
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('chatMessages', JSON.stringify(messages));
-          }
+          serverMessages = data.messages;
         }
       }
       
-      // MERGE với localStorage để không mất messages
+      // MERGE với localStorage để không mất messages (SỬA: Tránh mất tin nhắn khi spam)
       if (typeof window !== 'undefined') {
         const localMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
         if (Array.isArray(localMessages) && localMessages.length > 0) {
-          // Merge: Ưu tiên server, nhưng giữ lại local nếu server không có
+          // Merge: Ưu tiên server, nhưng giữ lại local nếu chưa có trong server HOẶC local mới hơn
           const messageMap = new Map<string, Message>();
           
           // Thêm messages từ server trước (ưu tiên)
-          messages.forEach((m: Message) => {
+          serverMessages.forEach((m: Message) => {
             messageMap.set(m.id, m);
           });
           
-          // Thêm messages từ local nếu chưa có trong server
+          // Thêm messages từ local nếu chưa có trong server HOẶC local mới hơn (để giữ tin nhắn vừa gửi)
           localMessages.forEach((m: Message) => {
-            if (!messageMap.has(m.id)) {
+            const existing = messageMap.get(m.id);
+            if (!existing) {
+              // Chưa có trong server, thêm vào (tin nhắn mới vừa gửi)
               messageMap.set(m.id, m);
+            } else {
+              // Có trong cả 2, so sánh timestamp để giữ bản mới hơn
+              const localTime = new Date(m.timestamp).getTime();
+              const serverTime = new Date(existing.timestamp).getTime();
+              if (localTime > serverTime) {
+                // Local mới hơn (tin nhắn vừa gửi), giữ lại
+                messageMap.set(m.id, m);
+              }
             }
           });
           
@@ -106,7 +113,16 @@ export default function ChatManagement() {
           
           // Update localStorage với merged data
           localStorage.setItem('chatMessages', JSON.stringify(messages));
+        } else {
+          // Không có trong localStorage, dùng server
+          messages = serverMessages;
+          if (messages.length > 0) {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+          }
         }
+      } else {
+        // Không có localStorage, dùng server
+        messages = serverMessages;
       }
       
       // Fallback: Nếu server không có, thử load từ localStorage
@@ -433,12 +449,16 @@ export default function ChatManagement() {
       msg.visitorId === conversation.visitorId && !msg.isAdmin ? { ...msg, read: true } : msg
     );
     
+    // SỬA: Sort messages trước khi update để đảm bảo thứ tự đúng
+    updatedWithRead.sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
     setAllMessages(updatedWithRead);
     localStorage.setItem('chatMessages', JSON.stringify(updatedWithRead));
     
-    // Update selected conversation để hiển thị reply ngay
+    // Update selected conversation để hiển thị reply ngay - SỬA: Sort messages
     if (selectedConversation?.visitorId === conversation.visitorId) {
       const updatedConvMessages = updatedWithRead.filter(msg => msg.visitorId === conversation.visitorId);
+      updatedConvMessages.sort((a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       setSelectedConversation({
         ...selectedConversation,
         messages: updatedConvMessages,
