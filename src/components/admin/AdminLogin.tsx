@@ -40,7 +40,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       if (typeof window !== 'undefined') {
         const settings = localStorage.getItem('adminSettings');
         let adminUsername = 'admin';
-        let adminPassword = 'admin123';
+        let adminPassword = '123123aA@';
 
         if (settings) {
           try {

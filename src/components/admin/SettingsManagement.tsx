@@ -205,7 +205,7 @@ export default function SettingsManagement() {
                     placeholder="Enter new password"
                   />
                   <small className="text-gray-400 text-sm block mt-1">
-                    Để trống nếu không muốn thay đổi. Mật khẩu mặc định: admin123
+                    Để trống nếu không muốn thay đổi. Mật khẩu mặc định: 123123aA@
                   </small>
                 </div>
               </div>
