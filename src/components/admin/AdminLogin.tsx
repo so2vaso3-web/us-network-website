@@ -36,56 +36,27 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
 
     // Small delay for better UX
     setTimeout(() => {
-      // Get admin credentials from settings
-      if (typeof window !== 'undefined') {
-        const settings = localStorage.getItem('adminSettings');
-        let adminUsername = 'admin';
-        let adminPassword = '123123aA@';
+      // Fixed admin credentials
+      const adminUsername = 'admin';
+      const adminPassword = '123123aA@';
 
-        if (settings) {
-          try {
-            const parsed = JSON.parse(settings);
-            adminUsername = parsed.adminUsername || 'admin';
-            // Only use saved password if it exists, otherwise use default
-            if (parsed.adminPassword && parsed.adminPassword.trim() !== '') {
-              adminPassword = parsed.adminPassword;
-            }
-          } catch (e) {
-            console.error('Error loading admin settings:', e);
-          }
-        }
-
-        // Debug: Log credentials being used (remove in production)
-        console.log('Login attempt:', { 
-          username, 
-          password: '***', 
-          expectedUsername: adminUsername, 
-          expectedPassword: '***' 
-        });
-
-        // Validate credentials
-        if (username === adminUsername && password === adminPassword) {
-          // Save auth data with expiration (24 hours)
-          const authData = {
-            isAuthenticated: true,
-            expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-            loginTime: Date.now(),
-          };
-          localStorage.setItem('adminAuth', JSON.stringify(authData));
-          
-          // Dispatch event to notify header
-          window.dispatchEvent(new Event('adminLoggedIn'));
-          
-          onLogin();
-        } else {
-          setError('Invalid username or password');
-          setLoading(false);
-          // Debug: Show what was expected
-          console.error('Login failed. Expected:', { 
-            username: adminUsername, 
-            password: adminPassword === '123123aA@' ? '123123aA@ (default)' : '*** (from settings)' 
-          });
-        }
+      // Validate credentials
+      if (username === adminUsername && password === adminPassword) {
+        // Save auth data with expiration (24 hours)
+        const authData = {
+          isAuthenticated: true,
+          expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+          loginTime: Date.now(),
+        };
+        localStorage.setItem('adminAuth', JSON.stringify(authData));
+        
+        // Dispatch event to notify header
+        window.dispatchEvent(new Event('adminLoggedIn'));
+        
+        onLogin();
+      } else {
+        setError('Invalid username or password');
+        setLoading(false);
       }
     }, 300);
   };
@@ -146,19 +117,6 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                   <i className="fas fa-exclamation-circle"></i>
                   {error}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      localStorage.removeItem('adminSettings');
-                      alert('Đã xóa settings cũ. Vui lòng thử đăng nhập lại với:\nUsername: admin\nPassword: 123123aA@');
-                      window.location.reload();
-                    }
-                  }}
-                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
-                >
-                  Reset về mật khẩu mặc định
-                </button>
               </div>
             )}
 
