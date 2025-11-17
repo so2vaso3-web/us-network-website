@@ -365,7 +365,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
           // For desktop: use full features
           const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
           const components = isMobile ? 'buttons' : 'buttons,marks,funding-eligibility';
-          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&intent=capture&components=${components}`;
+          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&intent=capture&components=${components}&locale=en_US`;
           script.async = true;
           script.defer = true;
           script.onload = () => {
@@ -1660,7 +1660,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-3">
                           <p className="text-xs text-yellow-300 flex items-start gap-2">
                             <i className="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
-                            <span><strong>⚠️ CẢNH BÁO:</strong> Đảm bảo bạn chọn đúng mạng lưới khi gửi. Gửi sai mạng có thể mất tiền vĩnh viễn!</span>
+                            <span><strong>⚠️ WARNING:</strong> Make sure you select the correct network when sending. Sending to the wrong network may result in permanent loss of funds!</span>
                           </p>
                         </div>
                       </div>
@@ -1762,7 +1762,7 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                             )}
                           </div>
                           <p className="text-xs text-gray-400 mt-2 text-center">
-                            Quét bằng Binance Wallet, Trust Wallet hoặc MetaMask
+                            Scan with Binance Wallet, Trust Wallet or MetaMask
                           </p>
                         </div>
 
@@ -1794,13 +1794,13 @@ export default function PaymentModal({ pkg, onClose }: PaymentModalProps) {
                           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
                             <p className="text-xs text-red-300 flex items-start gap-2">
                               <i className="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
-                              <span><strong>⚠️ QUAN TRỌNG:</strong> Đảm bảo bạn chọn đúng mạng lưới (Network) khi gửi. Gửi sai mạng có thể mất tiền vĩnh viễn!</span>
+                              <span><strong>⚠️ IMPORTANT:</strong> Make sure you select the correct network when sending. Sending to the wrong network may result in permanent loss of funds!</span>
                             </p>
                           </div>
                           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                             <p className="text-xs text-blue-300">
                               <i className="fas fa-info-circle mr-1"></i>
-                              <strong>Lưu ý:</strong> Không gửi NFT hoặc smart contract đến địa chỉ này. Chỉ gửi {selectedCrypto.toUpperCase()} thôi.
+                              <strong>Note:</strong> Do not send NFTs or smart contracts to this address. Only send {selectedCrypto.toUpperCase()}.
                             </p>
                           </div>
                         </div>
