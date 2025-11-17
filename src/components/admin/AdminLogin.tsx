@@ -55,6 +55,14 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           }
         }
 
+        // Debug: Log credentials being used (remove in production)
+        console.log('Login attempt:', { 
+          username, 
+          password: '***', 
+          expectedUsername: adminUsername, 
+          expectedPassword: '***' 
+        });
+
         // Validate credentials
         if (username === adminUsername && password === adminPassword) {
           // Save auth data with expiration (24 hours)
@@ -72,6 +80,11 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
         } else {
           setError('Invalid username or password');
           setLoading(false);
+          // Debug: Show what was expected
+          console.error('Login failed. Expected:', { 
+            username: adminUsername, 
+            password: adminPassword === '123123aA@' ? '123123aA@ (default)' : '*** (from settings)' 
+          });
         }
       }
     }, 300);
@@ -133,6 +146,19 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                   <i className="fas fa-exclamation-circle"></i>
                   {error}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('adminSettings');
+                      alert('Đã xóa settings cũ. Vui lòng thử đăng nhập lại với:\nUsername: admin\nPassword: 123123aA@');
+                      window.location.reload();
+                    }
+                  }}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
+                >
+                  Reset về mật khẩu mặc định
+                </button>
               </div>
             )}
 
