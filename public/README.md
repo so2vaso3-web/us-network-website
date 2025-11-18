@@ -37,3 +37,31 @@ File `logo.png` (180x180px hoặc lớn hơn) cho favicon và structured data.
 
 Favicon đã được cấu hình trong `layout.tsx` bằng SVG inline.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

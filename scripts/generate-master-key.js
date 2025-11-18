@@ -23,3 +23,31 @@ console.log('   Value: (paste the key above)');
 console.log('4. Save and redeploy your project');
 console.log('\n⚠️  IMPORTANT: Keep this key secure! If you lose it, you cannot decrypt existing data.\n');
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
